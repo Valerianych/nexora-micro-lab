@@ -176,6 +176,8 @@ function warmNextScenes() {
   if (!state.started) names = ['story-mentor-call','scene-briefing'];
   else if (state.activeCase === '002') {
     names = ['c2-dispatch-call','c2-siren-observe','c2-signal-evidence','c2-loop-explained','c2-program-repair','c2-siren-fixed'].slice(state.case2Stage + 1,state.case2Stage + 3);
+  } else if (extraCases[state.activeCase]) {
+    names = extraCases[state.activeCase].frames.slice(state.caseStage + 1,state.caseStage + 3);
   } else if (!state.introDone) {
     names = ['story-mentor-call','scene-briefing','c1-reaching','c1-broken-board','scene-workshop'].slice(state.introStep + 1,state.introStep + 3);
   } else {
