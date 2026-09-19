@@ -12,7 +12,7 @@
   <header id="site-header">
     <a class="brand" href="./"><span class="brand-icon">N</span> NEXORA <span class="brand-sub" id="brand-case-sub">/ дело 001</span></a>
     <span class="prototype">ВЕБ-КВЕСТ · ИНТЕРАКТИВНАЯ ИСТОРИЯ</span>
-    <div class="header-actions"><small id="save-status" role="status">Прогресс сохраняется в этом браузере</small><button id="case-archive">Архив дел</button><button id="about">О проекте</button></div>
+    <div class="header-actions"><small id="save-status" role="status">Прогресс сохраняется в этом браузере</small><button id="case-archive">Архив дел</button><button id="progress-settings">Сброс</button><button id="about">О проекте</button></div>
   </header>
 
   <section id="start-screen" aria-labelledby="start-title">
@@ -66,6 +66,7 @@
 
   <dialog id="archive-modal" class="archive-modal"><button id="close-archive" aria-label="Закрыть архив">×</button><div class="eyebrow">АРХИВ NEXORA / ДЕЛА</div><h2>Каждое дело — настоящая неисправность.</h2><p class="archive-lead">Выбирай проблему, собирай доказательства и осваивай новый инструмент программирования, чтобы вернуть устройство к жизни.</p><div id="case-list" class="case-list"></div></dialog>
   <dialog id="report-modal" class="archive-modal"><button id="close-report" aria-label="Закрыть отчёт">×</button><div class="eyebrow">АРХИВ NEXORA / ЗАКРЫТОЕ ДЕЛО</div><h2 id="report-title"></h2><div id="report-entries"></div></dialog>
+  <dialog id="reset-modal" class="archive-modal reset-modal"><button id="close-reset" aria-label="Закрыть">×</button><div class="eyebrow">НАСТРОЙКИ ПРОГРЕССА</div><h2>Начать заново</h2><p id="reset-case-description" class="archive-lead">Можно повторить текущее дело или очистить весь учебный прогресс.</p><div class="reset-actions"><button id="replay-case" class="accent" type="button">Пройти это дело заново ↺</button><button id="reset-all" type="button">Сбросить всё</button></div><div id="reset-all-confirm" hidden class="reset-confirm"><b>Удалить весь прогресс?</b><p>Очистятся открытые дела, отчёты, навыки, код и провода.</p><button id="confirm-reset-all" class="danger" type="button">Да, сбросить всё</button><button id="cancel-reset-all" type="button">Отмена</button></div></dialog>
   <dialog id="modal"><button id="close-modal" aria-label="Закрыть">×</button><h2>Мастерская NEXORA</h2><p>Веб-квест о микроконтроллерах: история, решения, улики и практическая сборка схемы. Верстак открывается внутри сюжета, когда стажёр получает доступ к мастерской.</p><p>Внутри эпизодов работает Arduino Uno, светодиод, резистор 220 Ом, кнопка и учебный фрагмент макетной платы. Код компилируется в браузере и выполняется эмулятором.</p><p>ESP32 пока не включена в текущую главу: её добавим отдельной веткой с Wi‑Fi и датчиком.</p><a href="licenses.html" target="_blank" rel="noopener">Компоненты и лицензии →</a></dialog>
   <script type="module" src="app.js"></script>
   <script type="module" src="game.js"></script>

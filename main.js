@@ -2,9 +2,9 @@ import '@wokwi/elements/dist/esm/arduino-uno-element.js';
 import '@wokwi/elements/dist/esm/led-element.js';
 import '@wokwi/elements/dist/esm/resistor-element.js';
 import '@wokwi/elements/dist/esm/pushbutton-element.js';
-import {Emulator,inspectCircuit} from './engine.js';
+import {Emulator,inspectCircuit,inspectSensor} from './engine.js';
 import {missions} from './lessons.js';
-import {readProgress, writeProgress, restoreWorkshop} from './progress.js';
+import {readProgress, writeProgress, restoreWorkshop, clearWorkshop} from './progress.js';
 import {analyzeSiren} from './case-two.js';
 import {arduinoWords,serialWords,analyzeSketch,compilerDiagnostics,sketchSymbols} from './arduino-language.js';
 import {Compartment,EditorState} from '@codemirror/state';
@@ -22,10 +22,12 @@ const pins=new Map(),parts=new Map();
 const FREE=missions.length;
 let breadboard=false;
 let workbenchMode='repair',drafts={},savingReady=false,restoringDraft=false,draftSaveTimer;
+let temperature=25;
+const sensorPins=[{name:'VCC',x:16,y:14},{name:'GND',x:16,y:58},{name:'OUT',x:105,y:36}];
 function saveWorkshop(){
   clearTimeout(draftSaveTimer);
   if(!savingReady||restoringDraft)return;
-  drafts[workbenchMode==='observe'?'3-observe':mission]={code:currentCode(),wires:wires.map(w=>({...w})),breadboard,step};
+  drafts[workbenchMode==='observe'?'3-observe':mission]={code:currentCode(),wires:wires.map(w=>({...w})),breadboard,temperature,step};
   writeProgress('workshop',{drafts,completed:[...completed],activeIndex:mission,mode:workbenchMode});
 }
 function queueDraftSave(){if(!savingReady||restoringDraft)return;clearTimeout(draftSaveTimer);draftSaveTimer=setTimeout(saveWorkshop,180);}
@@ -117,13 +119,14 @@ document.querySelector('.lesson').prepend(menu);
 menu.onchange=()=>loadMission(Number(menu.value));
 const badge=make('span',{className:'led-readout',textContent:'Светодиод: выключен'});document.querySelector('.workspace-head').append(badge);
 const partSpecs=[
- {id:'uno',tag:'wokwi-arduino-uno',label:'ARDUINO UNO',x:24,y:125,w:275,h:202,scale:1,pins:['13','12','2','5V','GND.2']},
+ {id:'uno',tag:'wokwi-arduino-uno',label:'ARDUINO UNO',x:24,y:125,w:275,h:202,scale:1,pins:['13','12','2','5V','GND.2','A0']},
  {id:'r',tag:'wokwi-resistor',label:'РЕЗИСТОР · 220 Ω',x:377,y:72,w:120,h:25,scale:1.8},
  {id:'led',tag:'wokwi-led',label:'СВЕТОДИОД',x:515,y:165,w:72,h:80,scale:1.8},
  {id:'button',tag:'wokwi-pushbutton',label:'КНОПКА',x:407,y:296,w:102,h:75,scale:1.3},
+ {id:'sensor',tag:'div',label:'ДАТЧИК TMP36',x:520,y:285,w:116,h:92,scale:1,virtualPins:sensorPins},
 ];
 
-function displayPin(id){const [part,pin]=id.split(':');return part==='bb'?'Плата '+pin.toUpperCase():part==='uno'?(pin.startsWith('GND')?'GND':/^\d+$/.test(pin)?'D'+pin:pin):part==='r'?'Резистор '+pin:part==='led'?'LED '+pin:'Кнопка '+pin;}
+function displayPin(id){const [part,pin]=id.split(':');return part==='bb'?'Плата '+pin.toUpperCase():part==='uno'?(pin.startsWith('GND')?'GND':/^\d+$/.test(pin)?'D'+pin:pin):part==='r'?'Резистор '+pin:part==='led'?'LED '+pin:part==='button'?'Кнопка '+pin:part==='sensor'?'Датчик '+pin:pin;}
 function feedback(text,type=''){const el=$('feedback');el.textContent=text;el.className='feedback '+type;}
 function log(text){$('console').textContent=text;}
 function setLight(data){parts.get('led').element.value=data.led;parts.get('uno').element.led13=data.led13;badge.textContent='Светодиод: '+(data.led?'включён':'выключен');badge.classList.toggle('lit',data.led);}
@@ -133,12 +136,14 @@ for(const spec of partSpecs){
  const title=make('span',{className:'part-title',textContent:spec.label});title.tabIndex=0;title.setAttribute('aria-label',spec.label+'. Перемещение: стрелки клавиатуры');
  const body=make('div',{className:'part-body'});body.style.width=spec.w+'px';body.style.height=spec.h+'px';
  const element=document.createElement(spec.tag);element.style.transform=`scale(${spec.scale})`;element.style.transformOrigin='top left';element.style.display='block';element.style.width='max-content';
+ if(spec.id==='sensor'){element.className='virtual-sensor';element.innerHTML='<strong>TMP36</strong><span class="sensor-reading">25 °C</span><small>перетащи шкалу</small>';element.style.width='116px';element.style.height='92px';}
  if(spec.id==='r')element.value='220';if(spec.id==='led')element.color='green';if(spec.id==='button'){element.color='green';element.addEventListener('button-press',()=>press(true));element.addEventListener('button-release',()=>press(false));}
  body.append(element);part.append(title,body);stage.append(part);parts.set(spec.id,{part,body,element,spec});
- for(const pin of element.pinInfo.filter(p=>!spec.pins||spec.pins.includes(p.name))){
+ for(const pin of (element.pinInfo||spec.virtualPins||[]).filter(p=>!spec.pins||spec.pins.includes(p.name))){
    const id=spec.id+':'+pin.name,btn=make('button',{className:'pin',title:displayPin(id)});btn.setAttribute('aria-label','Контакт '+displayPin(id));btn.setAttribute('aria-pressed','false');
    btn.style.left=pin.x*spec.scale+'px';btn.style.top=pin.y*spec.scale+'px';
    const label=make('span',{className:'pin-label',textContent:spec.id==='uno'?displayPin(id):pin.name});btn.append(label);btn.onclick=()=>pickPin(id);body.append(btn);pins.set(id,{btn,part:spec.id});
+   if(spec.id==='sensor')btn.classList.add('sensor-pin');
    if(spec.id==='uno' && pin.y<100){btn.classList.add('top-pin');if(pin.name==='12'){btn.classList.add('second-row');btn.style.top='-22px';}}
    if(spec.id==='uno' && pin.name==='5V'){btn.classList.add('power-pin');btn.style.top='224px';}
    if(spec.id==='led'&&pin.name==='C')btn.classList.add('led-cathode');
@@ -154,6 +159,11 @@ for(const spec of partSpecs){
 
 const bbToggle=make('button',{textContent:'＋ Макетная плата',className:'bb-toggle'});
 document.querySelector('.toolbar').append(bbToggle);
+const sensorControl=make('label',{className:'sensor-control'});sensorControl.innerHTML='<span>Температура</span><input id="temperature" type="range" min="0" max="60" value="25" step="1"><b id="temperature-value">25 °C</b>';document.querySelector('.toolbar').append(sensorControl);
+const temperatureInput=sensorControl.querySelector('input');
+function syncTemperatureUI(){temperatureInput.value=String(temperature);sensorControl.querySelector('b').textContent=`${temperature} °C`;const reading=document.querySelector('.sensor-reading');if(reading)reading.textContent=`${temperature} °C`;}
+temperatureInput.oninput=()=>{temperature=Number(temperatureInput.value);syncTemperatureUI();if(sim)sim.setTemperature(temperature);queueDraftSave();};
+
 const bb=make('div',{className:'breadboard-panel'});bb.hidden=true;stage.append(bb);
 const bbTitle=make('strong',{textContent:'МАКЕТНАЯ ПЛАТА · УЧЕБНЫЙ ФРАГМЕНТ'});bb.append(bbTitle);
 const bbNote=make('p',{textContent:'В каждой колонке a–e соединены внутри, f–j — отдельно. Между группами разрыв.'});bb.append(bbNote);
@@ -190,6 +200,7 @@ $('undo').onclick=()=>{stop();wires.pop();renderWires();feedback(inspectCircuit(
 $('reset').onclick=()=>{if(!window.confirm('Сбросить программу и провода текущего задания?'))return;loadMission(mission,{mode:workbenchMode,reset:true});};
 
 function renderLesson(){
+ const sensorVisible=mission>=6; sensorControl.hidden=!sensorVisible; const sensorPart=parts.get('sensor'); if(sensorPart) sensorPart.part.hidden=!sensorVisible;
  const free=mission===FREE, m=missions[Math.min(mission,FREE-1)], observing=workbenchMode==='observe';
  document.querySelector('.lesson>.eyebrow').textContent=observing?'ДЕЛО 002 / НАБЛЮДЕНИЕ':mission===3?'ДЕЛО 002 / РЕМОНТ':free?'СВОБОДНЫЙ ЭКСПЕРИМЕНТ':`ПЕРВЫЕ ШАГИ / МИССИЯ 0${mission+1}`;
  document.querySelector('.lesson h1').textContent=observing?'Найди сбой.':free?'Твоя идея.':['Подай сигнал.','Измени ритм.','Управляй светом.','Повтори трижды.','Собери ритм.','Дай имя действию.'][mission];
@@ -211,9 +222,10 @@ function loadMission(index,options={}){
  const key=workbenchMode==='observe'?'3-observe':index;
  if(options.reset)delete drafts[key];
  const draft=drafts[key];
+ if(!draft){temperature=25;syncTemperatureUI();}
  step=Math.min(draft?.step||0,missions[Math.min(index,FREE-1)].steps.length-1);
- if(draft){wires=draft.wires.map(w=>({...w}));breadboard=draft.breadboard;}
- if(options.reset){wires=[];breadboard=false;step=0;}
+ if(draft){wires=draft.wires.map(w=>({...w}));breadboard=draft.breadboard;temperature=Number.isFinite(draft.temperature)?draft.temperature:25;syncTemperatureUI();}
+ if(options.reset){wires=[];breadboard=false;step=0;temperature=25;syncTemperatureUI();}
  if(index<FREE)setSource(workbenchMode==='observe'?missions[index].code:draft?.code??missions[index].code);
  else if(draft)setSource(draft.code);
  bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';
@@ -237,7 +249,7 @@ async function run(){
    let result;if(lastHex&&lastSource===source)result={hex:lastHex,fitsTarget:true};else result=await compileSource(source);
    if(id!==runId)return;if(!result.fitsTarget)throw new Error('Программа не помещается в память Arduino Uno.');lastHex=result.hex;lastSource=source;
    busy=false;serialText='';let faultMessage=null;
-   sim=new Emulator(result.hex,wires.map(w=>({...w})),{breadboard,onChange:setLight,onSerial:char=>{serialText=(serialText+char).slice(-3000);},onFault:message=>{faultMessage=message;}});
+   sim=new Emulator(result.hex,wires.map(w=>({...w})),{breadboard,temperature,onChange:setLight,onSerial:char=>{serialText=(serialText+char).slice(-3000);},onFault:message=>{faultMessage=message;}});
    running=true;$('run').textContent='▶ Выполняется';$('run').disabled=true;$('check').disabled=false;$('runtime-status').textContent='Программа работает';parts.get('uno').element.ledPower=true;
    log('Программа скомпилирована.\nВыполняется на виртуальном ATmega328P.');feedback(circuit.reason,circuit.led?'success':'');window.dispatchEvent(new CustomEvent('nexora:program-run',{detail:{mission,hasCircuit:Boolean(circuit.led)}}));
    let previous=performance.now();
@@ -259,6 +271,25 @@ async function checkMission(){
    if(!intervals.every(t=>Math.abs(t-target)<.025)){feedback(`Светодиод переключается, но ритм отличается от задания. Каждое состояние должно длиться ${target*1000} мс. Проверь delay().`,'error');return;}
    if(mission===1&&(!/\bint\s+pauseMs\s*=/.test(currentCode())||(currentCode().match(/delay\s*\(\s*pauseMs\s*\)/g)||[]).length<2)){feedback('Ритм правильный. В этой миссии также создай переменную int pauseMs и используй её для обеих пауз.');return;}
    complete();return;
+ }
+ if(mission===6||mission===7){
+   const sensor=inspectSensor(wires,breadboard);
+   if(!sensor.connected){feedback(sensor.reason,'error');return;}
+   if(!running||!sim){feedback('Сначала запусти программу и дай датчику несколько секунд.');return;}
+   const source=currentCode().replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g,'');
+   if(mission===6){
+     if(!/\banalogRead\s*\(/.test(source)||!/\btemperature\s*>=\s*limitC/.test(source)||!/\bint\s+limitC\s*=\s*35\b/.test(source)){feedback('Нужны analogRead(A0), переменная limitC = 35 и сравнение temperature >= limitC.','error');return;}
+     const trials=[];for(const value of [34,35,40,25]){sim.setTemperature(value);sim.advance(900000);trials.push({value,led:sim.led});}
+     if(trials.some(t=>t.led!== (t.value>=35))){feedback('Проверь реакцию на границе: при 34 °C свет выключен, при 35 °C и выше включён.','error');return;}
+     complete({count:trials.filter(t=>t.led).length});return;
+   }
+   if(!/\banalogRead\s*\(/.test(source)||!/\bdigitalRead\s*\(/.test(source)||!source.includes('||')||!/\bdurations\s*\[\s*i\s*\]/.test(source)){feedback('В итоговом протоколе нужны датчик, кнопка, оператор ||, массив durations и цикл.','error');return;}
+   const trials=[{value:25,pressed:false,alarm:false},{value:40,pressed:false,alarm:true},{value:25,pressed:true,alarm:true},{value:40,pressed:true,alarm:true}];
+   const expected=[.1,.15,.25,.15,.5,1.15];
+   const hasPattern=(transitions,pattern)=>{const intervals=transitions.slice(1).map((item,index)=>item.time-transitions[index].time);return intervals.some((_,start)=>pattern.every((duration,index)=>Math.abs(intervals[start+index]-duration)<.04));};
+   const results=[];for(const trial of trials){const test=new Emulator(lastHex,wires.map(w=>({...w})),{breadboard,temperature:trial.value});test.setButton(trial.pressed);test.advance(70000000);results.push(trial.alarm?hasPattern(test.transitions,expected):test.transitions.length===0&&!test.led);}
+   if(!results.every(Boolean)){feedback('Проверь четыре сочетания: норма, перегрев, кнопка и оба события.','error');return;}
+   complete({count:results.length});return;
  }
  if(mission>2){
    const source=currentCode().replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g,'');
@@ -307,7 +338,13 @@ window.nexoraWorkshop={
   open(index=0,options={}){loadMission(Math.max(0,Math.min(FREE,index)),options);document.body.classList.add('workbench-open');requestAnimationFrame(drawWires);document.getElementById('sim-main')?.scrollIntoView({block:'start'});},
   close(){saveWorkshop();stop();document.body.classList.remove('workbench-open');},
   run,stop,check:checkMission,
-  getState:()=>({mission,step,mode:workbenchMode,running,wires:[...wires],breadboard,code:currentCode()})
+  resetProgress(indices=null){
+    saveWorkshop();
+    const clean=clearWorkshop({drafts,completed:[...completed],activeIndex:mission,mode:workbenchMode},indices);
+    drafts=clean.drafts;completed=new Set(clean.completed);
+    writeProgress('workshop',{drafts,completed:[...completed],activeIndex:indices&&indices.includes(mission)?0:(indices?mission:0),mode:indices&&indices.includes(mission)?'repair':workbenchMode});
+  },
+  getState:()=>({mission,step,mode:workbenchMode,running,wires:[...wires],breadboard,temperature,code:currentCode()})
 };
 
 window.dispatchEvent(new Event('nexora:workshop-ready'));

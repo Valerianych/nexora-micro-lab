@@ -1,4 +1,4 @@
-import { CPU, avrInstruction, AVRIOPort, AVRTimer, AVRUSART, portBConfig, portCConfig, portDConfig, timer0Config, timer1Config, timer2Config, usart0Config, PinState } from 'avr8js';
+import { CPU, AVRADC, adcConfig, avrInstruction, AVRIOPort, AVRTimer, AVRUSART, portBConfig, portCConfig, portDConfig, timer0Config, timer1Config, timer2Config, usart0Config, PinState } from 'avr8js';
 
 export function readHex(hex) {
   const bytes = new Uint8Array(32768); let base=0;
@@ -52,10 +52,19 @@ export function inspectCircuit(wires, pressed=false, breadboard=false) {
   return {led,error,reason,n};
 }
 
+export function inspectSensor(wires,breadboard=false){
+  const n=nets(wires,false,breadboard);
+  const powered=n.same('sensor:VCC','uno:5V')&&n.same('sensor:GND','uno:GND.2');
+  const connected=powered&&n.same('sensor:OUT','uno:A0');
+  const short=n.same('sensor:OUT','uno:GND.2')||n.same('sensor:OUT','uno:5V');
+  return {connected:connected&&!short,reason:short?'Выход датчика замкнут на питание или землю. Подключи OUT только к A0.':!connected?'Подключи датчик: VCC → 5V, GND → GND, OUT → A0.':'Датчик подключён к A0.'};
+}
+
 export class Emulator {
-  constructor(hex,wires,{breadboard=false,onChange=()=>{},onSerial=()=>{},onFault=()=>{}}={}){
+  constructor(hex,wires,{breadboard=false,temperature=25,onChange=()=>{},onSerial=()=>{},onFault=()=>{}}={}){
     this.cpu=new CPU(readHex(hex));this.wires=wires;this.breadboard=breadboard;this.pressed=false;this.led=false;this.transitions=[];this.fault=null;this.onChange=onChange;this.onFault=onFault;this.ready=false;
     this.ports={B:new AVRIOPort(this.cpu,portBConfig),C:new AVRIOPort(this.cpu,portCConfig),D:new AVRIOPort(this.cpu,portDConfig)};
+    this.adc=new AVRADC(this.cpu,adcConfig);this.temperature=temperature;this.setTemperature(temperature);
     this.timers=[timer0Config,timer1Config,timer2Config].map(config=>new AVRTimer(this.cpu,config));
     this.serial=new AVRUSART(this.cpu,usart0Config,16000000);this.serial.onByteTransmit=value=>onSerial(String.fromCharCode(value));
     for(const port of Object.values(this.ports))port.addListener(()=>this.update());
@@ -76,6 +85,10 @@ export class Emulator {
     if(value!==this.led){this.led=value;this.transitions.push({time:this.cpu.cycles/16000000,value}); if(this.transitions.length>50)this.transitions.shift();}
     this.onChange({led:this.led,led13:this.state(13)===PinState.High,time:this.cpu.cycles/16000000,pressed:this.pressed});
     this.updating=false;if(this.fault)this.onFault(this.fault);
+  }
+  setTemperature(value){
+    this.temperature=Math.max(0,Math.min(80,Number(value)||0));
+    this.adc.channelValues[0]=inspectSensor(this.wires,this.breadboard).connected ? 0.5+this.temperature*0.01 : 0;
   }
   setButton(value){this.pressed=value;this.update();}
   advance(cycles){const end=this.cpu.cycles+cycles;while(this.cpu.cycles<end&&!this.fault){avrInstruction(this.cpu);this.cpu.tick();}return this.cpu.cycles;}

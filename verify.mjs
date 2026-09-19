@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { buildFirmware } from '@horang-corp/avr-gcc-wasm';
-import { Emulator, inspectCircuit } from './engine.js';
+import { Emulator, inspectCircuit, inspectSensor } from './engine.js';
 import { missions } from './lessons.js';
 import {analyzeSiren} from './case-two.js';
 
@@ -17,7 +17,7 @@ const cathodeResistor=[{a:'uno:13',b:'led:A'},{a:'led:C',b:'r:2'},{a:'r:1',b:'un
 const bb=[{a:'uno:13',b:'bb:a1'},{a:'bb:e1',b:'r:1'},...wires.slice(1)];assert.ok(inspectCircuit(bb,false,true).led);assert.equal(inspectCircuit(bb,false,false).led,null);
 assert.equal(inspectCircuit(bb.map(w=>({...w,a:w.a==='bb:e1'?'bb:f1':w.a})),false,true).led,null);
 const built=[];
-for(let i=0;i<missions.length;i++){
+for(let i=0;i<6;i++){
   let source=missions[i].code;
   if(i===1)source=source.replace('pauseMs = 500','pauseMs = 250');
   if(i===2)source=source.replace('LOW); // замени LOW','HIGH); // исправлено');
@@ -55,6 +55,29 @@ const moved=new Emulator(built[0],wires.map(w=>({...w,a:w.a==='uno:13'?'uno:12':
 const short=new Emulator(built[0],[...wires,{a:'uno:13',b:'uno:GND.2'}]);short.advance(100000);assert.ok(short.fault);
 await assert.rejects(buildFirmware({source:'#include <Arduino.h>\nvoid setup(){this_is_an_error;}\nvoid loop(){}'}));
 console.log('PASS wrong pin, open circuit, short circuit, breadboard groups and compiler error.');
+
+// Exercise the analog TMP36 model and the final multi-input protocol.
+const sensorWires=[...wires,{a:'sensor:VCC',b:'uno:5V'},{a:'sensor:GND',b:'uno:GND.2'},{a:'sensor:OUT',b:'uno:A0'}];
+const buttonWires=[...sensorWires,{a:'uno:2',b:'button:1.l'},{a:'button:2.l',b:'uno:GND.2'}];
+assert.equal(inspectSensor(sensorWires).connected,true);
+assert.equal(inspectSensor(sensorWires.filter(w=>w.a!=='sensor:OUT'&&w.b!=='sensor:OUT')).connected,false);
+const coolingSource=missions[6].code.replace('limitC = 45','limitC = 35');
+const coolingFirmware=await buildFirmware({source:'#include <Arduino.h>\n'+coolingSource});
+for(const [temperature,expected] of [[25,false],[34,false],[35,true],[40,true]]){
+  const emu=new Emulator(coolingFirmware.hex,sensorWires,{temperature});
+  emu.advance(2000000);
+  assert.equal(emu.led,expected,`TMP36 at ${temperature} °C`);
+}
+console.log('PASS mission 7: TMP36 threshold reacts at 35 °C and turns off below it.');
+const protocolSource=missions[7].code.replace('int durations[3] = {100, 250, 250};','int durations[3] = {100, 250, 500};').replace('temperature >= 35 && pressed','temperature >= 35 || pressed');
+const protocolFirmware=await buildFirmware({source:'#include <Arduino.h>\n'+protocolSource});
+const protocolPattern=[.1,.15,.25,.15,.5,1.15];
+const hasPattern=(transitions)=>{const intervals=transitions.slice(1).map((item,index)=>item.time-transitions[index].time);return intervals.some((_,start)=>protocolPattern.every((duration,index)=>Math.abs(intervals[start+index]-duration)<.04));};
+for(const [temperature,pressed,alarm] of [[25,false,false],[40,false,true],[25,true,true],[40,true,true]]){
+  const emu=new Emulator(protocolFirmware.hex,buttonWires,{temperature});emu.setButton(pressed);emu.advance(70000000);
+  assert.equal(alarm?hasPattern(emu.transitions):emu.transitions.length===0&&!emu.led,true,`protocol ${temperature} °C / pressed=${pressed}`);
+}
+console.log('PASS mission 8: OR protocol triggers independently from temperature and button.');
 const html=await fs.readFile('dist/index.html','utf8');
 for(const file of [...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map(m=>m[1]).filter(s=>!s.startsWith('data:')&&!s.startsWith('http')&&s!=='./'))await fs.access('dist/'+file);
 console.log('PASS local HTML asset references. Browser and WebMCP context validation were not run.');
