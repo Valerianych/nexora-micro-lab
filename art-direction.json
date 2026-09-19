@@ -1,0 +1,29 @@
+{
+  "format": "16:9 visual-novel frame",
+  "style": "cinematic educational mystery, night electronics laboratory, consistent characters, no text embedded in image",
+  "characters": {
+    "intern": "young woman electronics intern, short dark hair, dark teal work jacket",
+    "maya": "engineer mentor, calm expression, dark uniform with lime accents"
+  },
+  "scenes": {
+    "case-001": [
+      "mentor call about the silent beacon",
+      "intern inspects the emergency panel",
+      "intern reaches toward a damaged Arduino board",
+      "close view of the broken circuit",
+      "resistor found and picked up",
+      "first LED lights up",
+      "server signal examined and restored",
+      "rooftop button examined",
+      "beacon shines again"
+    ],
+    "case-002": [
+      "dispatch call about a stuck siren",
+      "intern observes the repeating signal",
+      "oscilloscope evidence",
+      "mentor explains a loop",
+      "intern repairs the program",
+      "siren returns to normal"
+    ]
+  }
+}

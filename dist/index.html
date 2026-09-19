@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NEXORA — дело о пропавшем сигнале</title>
+  <meta name="description" content="Веб-квест о микроконтроллерах: расследуй аварию, собери схему и научи устройство работать.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23181f2e'/%3E%3Cpath d='M8 24V8l16 16V8' fill='none' stroke='%23c6f564' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="quest-mode">
+  <header id="site-header">
+    <a class="brand" href="./"><span class="brand-icon">N</span> NEXORA <span class="brand-sub" id="brand-case-sub">/ дело 001</span></a>
+    <span class="prototype">ВЕБ-КВЕСТ · ИНТЕРАКТИВНАЯ ИСТОРИЯ</span>
+    <div class="header-actions"><small id="save-status" role="status">Прогресс сохраняется в этом браузере</small><button id="case-archive">Архив дел</button><button id="about">О проекте</button></div>
+  </header>
+
+  <section id="start-screen" aria-labelledby="start-title">
+    <div class="start-noise"></div>
+    <div class="start-copy">
+      <div class="eyebrow">NEXORA LABS / ВХОДЯЩЕЕ ДЕЛО 001</div>
+      <h1 id="start-title">Дело о<br><em>пропавшем сигнале.</em></h1>
+      <p>В учебной лаборатории замолчал маяк. До запуска демонстрации — один час. Ты новый стажёр, и от твоих решений зависит, успеет ли команда вернуть систему к жизни.</p>
+      <button id="start-game" class="start-button">Взять дело <span>→</span></button>
+      <div class="start-meta"><span>⏱ 20–30 минут</span><span>⌁ 4 сцены расследования</span><span>⌘ код + схемы</span></div>
+    </div>
+    <div class="start-briefing">
+      <div class="case-file"><span class="case-stamp">СРОЧНО</span><span class="case-number">CASE / 001</span><h2>Последний журнал</h2><p>«Маяк мигнул два раза, затем погас. На столе остались плата, кнопка и незаконченная схема. Найдите причину до прихода комиссии».</p><div class="case-sign">— Мая, инженер-наставник</div></div>
+      <div class="signal-orbit"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="signal-core">N</div><span class="signal-label label-a">GPIO</span><span class="signal-label label-b">INPUT</span><span class="signal-label label-c">LOOP</span></div>
+    </div>
+  </section>
+
+  <section id="game-shell" aria-label="Веб-квест NEXORA">
+    <div class="game-topbar"><div><span class="eyebrow" id="case-topbar-label">ДЕЛО 001 / ТЕКУЩАЯ СЦЕНА</span><h1 id="quest-title">Тихая лаборатория</h1></div><div class="game-stats"><span class="stat"><b id="clue-count">0</b><small>улики</small></span><span class="stat"><b id="score">000</b><small>репутация</small></span><button id="case-log">Журнал дела <span>J</span></button></div></div>
+    <div class="game-layout">
+      <aside class="quest-map">
+        <div class="map-heading"><span>МАРШРУТ</span><small>ЭТАП 1 / 4</small></div>
+        <div class="map-line"></div>
+        <button class="room active" data-room="briefing"><i>01</i><span><b>Комната связи</b><small>Входящее дело</small></span><em>●</em></button>
+        <button class="room locked" data-room="workshop" disabled><i>02</i><span><b>Мастерская</b><small>Собрать цепь</small></span><em>×</em></button>
+        <button class="room locked" data-room="server" disabled><i>03</i><span><b>Серверная</b><small>Найти ритм сигнала</small></span><em>×</em></button>
+        <button class="room locked" data-room="roof" disabled><i>04</i><span><b>Крыша</b><small>Финальный запуск</small></span><em>×</em></button>
+        <div class="inventory"><div class="inventory-head"><span>СОБРАНО</span><small id="inventory-count">0 / 4</small></div><div id="inventory-items"><span class="empty-inventory">Пока пусто</span></div></div>
+        <div class="skill-board" aria-label="Прогресс навыков"><div class="skill-board-head"><span>НАВЫКИ ДЕЛА</span><small id="skill-progress">0 / 7</small></div><div id="skill-list" class="skill-list"><div class="skill-row" data-skill="circuit"><i>01</i><span><b>Сборка цепи</b><small>соединять плату</small></span><em>—</em></div><div class="skill-row" data-skill="variables"><i>02</i><span><b>Переменные</b><small>давать значениям имена</small></span><em>—</em></div><div class="skill-row" data-skill="types"><i>03</i><span><b>Типы данных</b><small>int и bool</small></span><em>—</em></div><div class="skill-row" data-skill="conditions"><i>04</i><span><b>Условия</b><small>if / else</small></span><em>—</em></div><div class="skill-row" data-skill="loops"><i>05</i><span><b>Циклы</b><small>повторять действие</small></span><em>—</em></div><div class="skill-row" data-skill="arrays"><i>06</i><span><b>Массивы</b><small>хранить список</small></span><em>—</em></div><div class="skill-row" data-skill="functions"><i>07</i><span><b>Функции</b><small>собирать команды</small></span><em>—</em></div></div></div>
+        <div class="player-card"><div class="player-avatar">В</div><div><b>Валерия</b><small id="player-level">стажёр · уровень 0</small></div><span class="online-dot"></span></div>
+      </aside>
+      <section class="scene" id="scene" aria-live="polite">
+        <div class="scene-backdrop"><div class="window-glow"></div><div class="desk-shape"></div><div class="terminal-shape"><span></span><span></span><span></span></div><div class="plant-shape"></div></div>
+        <div class="scene-header"><span id="scene-location">КОМНАТА СВЯЗИ · 08:42</span><span id="scene-status" class="scene-status">СИГНАЛ ПОТЕРЯН</span></div>
+        <div id="comic-intro" class="comic-intro" hidden aria-label="Вступление к делу"></div>
+        <div class="scene-content"><div class="scene-kicker" id="scene-kicker">ТЫ ВХОДИШЬ В ЛАБОРАТОРИЮ</div><h2 id="scene-title">Здесь слишком тихо.</h2><p id="scene-description">Перед тобой мигает аварийная панель. На экране — последний лог маяка. Из мастерской доносится короткий щелчок.</p><div id="scene-object" class="scene-object"><div class="object-icon">◉</div><div><b>Аварийная панель</b><small>последний пакет: 08:39:12</small></div><button id="inspect-object">Осмотреть</button></div></div>
+        <div class="scene-art-frame"><img id="scene-art-previous" alt="" aria-hidden="true" decoding="async"><img id="scene-art" alt="Стажёр входит в ночную лабораторию, где погас аварийный маяк" decoding="async"><span id="scene-page-turn" aria-hidden="true"></span></div>
+        <div id="scene-art-caption" class="scene-art-caption">КАДР 01 / ВХОДЯЩЕЕ ДЕЛО</div>
+        <div class="dialogue"><div class="speaker-avatar" id="speaker-avatar">М</div><div class="dialogue-body"><div class="speaker-line"><b id="speaker-name">Мая · инженер</b><span id="speaker-role">внутренняя связь</span></div><p id="dialogue-text">«Стажёр, ты вовремя. Маяк не отвечает, но питание на плате есть. Не спеши подключать всё подряд — сначала разберись, что произошло».</p><div id="dialogue-actions" class="dialogue-actions"><button data-action="ask">Спросить, что случилось</button><button data-action="panel">Осмотреть панель</button></div></div></div>
+      </section>
+    </div>
+    <aside id="case-drawer" class="case-drawer" hidden><button id="close-case">×</button><div class="eyebrow" id="case-drawer-eyebrow">ЖУРНАЛ ДЕЛА 001</div><h2 id="case-drawer-title">Пропавший сигнал</h2><p id="case-drawer-description">Цель: вернуть маяк до прихода комиссии. Каждая собранная схема добавляет запись в журнал.</p><div id="case-entries"><div class="case-entry active"><b>08:42 / Вход</b><span>Связь с маяком потеряна.</span></div></div></aside>
+  </section>
+
+  <main id="sim-main" aria-label="Верстак программирования">
+    <div class="sim-backbar"><button id="return-quest">← Вернуться в дело</button><span><b>РАБОЧИЙ СТОЛ / ЭПИЗОД</b><small id="workbench-objective">Собери устройство по уликам</small></span><span class="sim-badge">Эмуляция ATmega328P</span></div>
+    <aside class="lesson"><div class="eyebrow">ПЕРВЫЕ ШАГИ / МИССИЯ 01</div><h1>Подай<br>сигнал.</h1><p class="intro">Собери сигнальную лампу для мастерской и научи её мигать.</p><div class="steps" id="steps"></div><article id="lesson-content"></article><div class="lesson-nav"><button id="prev" aria-label="Предыдущий шаг">←</button><button id="next" class="accent">Дальше →</button></div><div class="goal"><span>ТВОЯ ЗАДАЧА</span><p>Светодиод включается и выключается каждые полсекунды.</p><button id="check">Проверить миссию</button></div></aside>
+    <section class="workspace"><div class="workspace-head"><div><span class="eyebrow">РАБОЧИЙ СТОЛ</span><h2>Первая электрическая цепь</h2></div><button id="reset">Начать заново</button></div><div class="toolbar"><span class="chip">Arduino Uno</span><span class="wire-label">Цвет провода</span><div id="colors"></div><button id="undo" title="Удалить последнее соединение">↶ Отменить провод</button></div><div id="board" class="board" aria-label="Рабочий стол со схемой"><svg id="wires" aria-label="Соединения"></svg><div class="board-hint">Нажми на один контакт, затем на другой</div></div><div class="connections"><div><b>Соединения</b><span id="wire-count">0 проводов</span></div><ul id="wire-list"></ul><p id="connect-help">Контакты отмечены кружками. Компоненты можно перемещать за название.</p></div><div class="feedback" id="feedback" role="status" aria-live="polite">Начни с короткого объяснения слева или сразу попробуй соединить контакты.</div></section>
+    <section class="code-panel"><div class="code-head"><h2>Программа</h2><span>Arduino C++ · sketch.ino</span></div><p class="code-intro">Пиши как в настоящем редакторе: слова подсвечиваются, скобки закрываются автоматически, а подсказки появляются во время ввода.</p><div class="code-toolbar"><span class="code-legend"><i class="legend-keyword">if</i><i class="legend-function">delay()</i><i class="legend-value">500</i><i class="legend-comment">// подсказка</i></span><button id="check-code" type="button">✓ Проверить код</button></div><label class="sr-only" for="code-editor">Код Arduino C++</label><div id="code-editor" class="code-editor" aria-label="Редактор кода Arduino C++"></div><textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" hidden></textarea><div id="code-hints" class="code-hints" role="status" aria-live="polite"></div><div class="run-row"><button id="run" class="accent">▶ Запустить</button><button id="stop" disabled>■ Стоп</button></div><div class="runtime"><span id="runtime-status">Остановлено</span><span id="sim-time">0.00 с</span></div><details><summary>Что означают строки кода?</summary><p><code>setup()</code> выполняется один раз при запуске. <code>pinMode</code> задаёт режим контакта.</p><p><code>loop()</code> повторяется. <code>digitalWrite</code> устанавливает высокий или низкий уровень на выходе. <code>delay</code> задаёт паузу в миллисекундах: 1000 мс = 1 с.</p></details><div class="console-title">СООБЩЕНИЯ ПЛАТЫ</div><pre id="console" aria-live="polite">Здесь появятся результаты компиляции и сообщения Serial.</pre><button id="download" class="text-button">↓ Скачать программу .ino</button></section>
+  </main>
+
+  <dialog id="archive-modal" class="archive-modal"><button id="close-archive" aria-label="Закрыть архив">×</button><div class="eyebrow">АРХИВ NEXORA / ДЕЛА</div><h2>Каждое дело — настоящая неисправность.</h2><p class="archive-lead">Выбирай проблему, собирай доказательства и осваивай новый инструмент программирования, чтобы вернуть устройство к жизни.</p><div id="case-list" class="case-list"></div></dialog>
+  <dialog id="report-modal" class="archive-modal"><button id="close-report" aria-label="Закрыть отчёт">×</button><div class="eyebrow">АРХИВ NEXORA / ЗАКРЫТОЕ ДЕЛО</div><h2 id="report-title"></h2><div id="report-entries"></div></dialog>
+  <dialog id="modal"><button id="close-modal" aria-label="Закрыть">×</button><h2>Мастерская NEXORA</h2><p>Веб-квест о микроконтроллерах: история, решения, улики и практическая сборка схемы. Верстак открывается внутри сюжета, когда стажёр получает доступ к мастерской.</p><p>Внутри эпизодов работает Arduino Uno, светодиод, резистор 220 Ом, кнопка и учебный фрагмент макетной платы. Код компилируется в браузере и выполняется эмулятором.</p><p>ESP32 пока не включена в текущую главу: её добавим отдельной веткой с Wi‑Fi и датчиком.</p><a href="licenses.html" target="_blank" rel="noopener">Компоненты и лицензии →</a></dialog>
+  <script type="module" src="app.js"></script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>

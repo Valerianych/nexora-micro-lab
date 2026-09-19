@@ -1,0 +1,174 @@
+{
+  "generated_at": "2026-09-19T03:29:24.757Z",
+  "note": "Optimized responsive derivatives. Replace same base names with newly illustrated scenes later.",
+  "assets": {
+    "story-mentor-call": {
+      "source": "story-mentor-call.png",
+      "variants": [
+        "dist/art/story-mentor-call-360.webp",
+        "dist/art/story-mentor-call-640.webp",
+        "dist/art/story-mentor-call-1280.webp"
+      ]
+    },
+    "scene-briefing": {
+      "source": "scene-briefing.png",
+      "variants": [
+        "dist/art/scene-briefing-360.webp",
+        "dist/art/scene-briefing-640.webp",
+        "dist/art/scene-briefing-1280.webp"
+      ]
+    },
+    "scene-workshop": {
+      "source": "scene-workshop.png",
+      "variants": [
+        "dist/art/scene-workshop-360.webp",
+        "dist/art/scene-workshop-640.webp",
+        "dist/art/scene-workshop-1280.webp"
+      ]
+    },
+    "scene-server": {
+      "source": "scene-server.png",
+      "variants": [
+        "dist/art/scene-server-360.webp",
+        "dist/art/scene-server-640.webp",
+        "dist/art/scene-server-1280.webp"
+      ]
+    },
+    "story-panel-inspected": {
+      "source": "story-panel-inspected.png",
+      "variants": [
+        "dist/art/story-panel-inspected-360.webp",
+        "dist/art/story-panel-inspected-640.webp",
+        "dist/art/story-panel-inspected-1280.webp"
+      ]
+    },
+    "c1-reaching": {
+      "source": "scene-workshop.png",
+      "variants": [
+        "dist/art/c1-reaching-360.webp",
+        "dist/art/c1-reaching-640.webp",
+        "dist/art/c1-reaching-1280.webp"
+      ]
+    },
+    "c1-broken-board": {
+      "source": "story-panel-inspected.png",
+      "variants": [
+        "dist/art/c1-broken-board-360.webp",
+        "dist/art/c1-broken-board-640.webp",
+        "dist/art/c1-broken-board-1280.webp"
+      ]
+    },
+    "c1-resistor-found": {
+      "source": "scene-workshop.png",
+      "variants": [
+        "dist/art/c1-resistor-found-360.webp",
+        "dist/art/c1-resistor-found-640.webp",
+        "dist/art/c1-resistor-found-1280.webp"
+      ]
+    },
+    "c1-resistor-taken": {
+      "source": "scene-workshop.png",
+      "variants": [
+        "dist/art/c1-resistor-taken-360.webp",
+        "dist/art/c1-resistor-taken-640.webp",
+        "dist/art/c1-resistor-taken-1280.webp"
+      ]
+    },
+    "c1-first-light": {
+      "source": "scene-workshop.png",
+      "variants": [
+        "dist/art/c1-first-light-360.webp",
+        "dist/art/c1-first-light-640.webp",
+        "dist/art/c1-first-light-1280.webp"
+      ]
+    },
+    "c1-signal-inspect": {
+      "source": "scene-server.png",
+      "variants": [
+        "dist/art/c1-signal-inspect-360.webp",
+        "dist/art/c1-signal-inspect-640.webp",
+        "dist/art/c1-signal-inspect-1280.webp"
+      ]
+    },
+    "c1-signal-restored": {
+      "source": "scene-server.png",
+      "variants": [
+        "dist/art/c1-signal-restored-360.webp",
+        "dist/art/c1-signal-restored-640.webp",
+        "dist/art/c1-signal-restored-1280.webp"
+      ]
+    },
+    "c1-roof-arrival": {
+      "source": "scene-roof.png",
+      "variants": [
+        "dist/art/c1-roof-arrival-360.webp",
+        "dist/art/c1-roof-arrival-640.webp",
+        "dist/art/c1-roof-arrival-1280.webp"
+      ]
+    },
+    "c1-button-inspect": {
+      "source": "scene-roof.png",
+      "variants": [
+        "dist/art/c1-button-inspect-360.webp",
+        "dist/art/c1-button-inspect-640.webp",
+        "dist/art/c1-button-inspect-1280.webp"
+      ]
+    },
+    "c1-beacon-restored": {
+      "source": "scene-roof.png",
+      "variants": [
+        "dist/art/c1-beacon-restored-360.webp",
+        "dist/art/c1-beacon-restored-640.webp",
+        "dist/art/c1-beacon-restored-1280.webp"
+      ]
+    },
+    "c2-dispatch-call": {
+      "source": "story-mentor-call.png",
+      "variants": [
+        "dist/art/c2-dispatch-call-360.webp",
+        "dist/art/c2-dispatch-call-640.webp",
+        "dist/art/c2-dispatch-call-1280.webp"
+      ]
+    },
+    "c2-siren-observe": {
+      "source": "scene-server.png",
+      "variants": [
+        "dist/art/c2-siren-observe-360.webp",
+        "dist/art/c2-siren-observe-640.webp",
+        "dist/art/c2-siren-observe-1280.webp"
+      ]
+    },
+    "c2-signal-evidence": {
+      "source": "story-panel-inspected.png",
+      "variants": [
+        "dist/art/c2-signal-evidence-360.webp",
+        "dist/art/c2-signal-evidence-640.webp",
+        "dist/art/c2-signal-evidence-1280.webp"
+      ]
+    },
+    "c2-loop-explained": {
+      "source": "scene-workshop.png",
+      "variants": [
+        "dist/art/c2-loop-explained-360.webp",
+        "dist/art/c2-loop-explained-640.webp",
+        "dist/art/c2-loop-explained-1280.webp"
+      ]
+    },
+    "c2-program-repair": {
+      "source": "scene-workshop.png",
+      "variants": [
+        "dist/art/c2-program-repair-360.webp",
+        "dist/art/c2-program-repair-640.webp",
+        "dist/art/c2-program-repair-1280.webp"
+      ]
+    },
+    "c2-siren-fixed": {
+      "source": "scene-server.png",
+      "variants": [
+        "dist/art/c2-siren-fixed-360.webp",
+        "dist/art/c2-siren-fixed-640.webp",
+        "dist/art/c2-siren-fixed-1280.webp"
+      ]
+    }
+  }
+}
