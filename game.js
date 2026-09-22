@@ -1,5 +1,6 @@
 import {readProgress, writeProgress, restoreGame, serializeGame, signalSnapshot, caseSnapshot, clearWorkshop, clearProgress} from './progress.js';
-import {CASE_MISSIONS, extraCases, modelComplete} from './case-stories.js';
+import {CASE_MISSIONS, extraCases} from './case-stories.js';
+import {modelMarkup, bindModel} from './case-models.js';
 import {loopTrace} from './case-two.js';
 import {createImageCache, createSceneGate, artSource} from './story-media.js';
 const $ = (id) => document.getElementById(id);
@@ -29,7 +30,7 @@ const initialState = () => ({
   journal: [], reports: {}, view: 'story', workbenchIndex: 0, workbenchMode: 'repair',
   case2Stage: 0, case2Reached: 0, observation: null, repairResult: null,
   traceStep: 0, traceBound: 2, traceComplete: false,
-  caseStage:0, caseReached:0, modelSeen:[], modelValue:0, modelDone:false,
+  caseStage:0, caseReached:0, modelSeen:[], modelValue:0, modelDone:false, modelSetting:'',
   caseSaves:{}, rewarded:new Set(),
 });
 const state = initialState();
@@ -184,7 +185,7 @@ function warmNextScenes() {
     const next = {briefing:['scene-workshop','c1-resistor-found'],workshop:state.completed.has(0)?['scene-server','c1-signal-inspect']:state.tookResistor?['c1-first-light','scene-server']:state.inspectedResistor?['c1-resistor-taken','c1-first-light']:['c1-resistor-found','c1-resistor-taken'],server:state.completed.has(1)?['c1-roof-arrival','c1-button-inspect']:state.inspectedServer?['c1-signal-restored','c1-roof-arrival']:['c1-signal-inspect','c1-signal-restored'],roof:state.final?['c2-dispatch-call']:['c1-button-inspect','c1-beacon-restored']};
     names = next[state.room] || [];
   }
-  if (!globalThis.navigator?.connection?.saveData) mediaCache.prefetch(names.map(name=>artSource(name)));
+  if (!globalThis.navigator?.connection?.saveData) mediaCache.prefetch(names.map(name=>sceneArt[name]?.src || artSource(name)));
 }
 
 let storyAction = null;
@@ -404,7 +405,7 @@ function resetCaseProgress({ resetScore = false } = {}) {
   state.traceStep = 0;
   state.traceBound = 2;
   state.traceComplete = false;
-  state.caseStage=0; state.caseReached=0; state.modelDone=false;state.modelSeen=[];state.modelValue=0;
+  state.caseStage=0; state.caseReached=0; state.modelDone=false;state.modelSeen=[];state.modelValue=0;state.modelSetting='';
   state.workbenchIndex=CASE_MISSIONS[state.activeCase][0];state.workbenchMode='repair';
   const info = caseInfo();
   state.journal = [{title:`Входящее дело ${info.id}`, text:info.problem}];
@@ -784,25 +785,6 @@ function renderLoopModel() {
   queueSave();
 }
 
-function extraModelMarkup(id, story) {
-  const labels={
-    '003':['Открыть durations[0]','Открыть durations[1]','Открыть durations[2]'],
-    '004':['Вызвать blink(200)','Вызвать blink(600)'],
-    '005':['Проверить 34 °C','Проверить 35 °C','Проверить 40 °C'],
-    '006':['Норма: 25 °C + отпущена','Перегрев: 40 °C','Кнопка нажата','Оба события']
-  }[id];
-  return `<section class="case-model" id="case-model"><div class="case-model-head"><span>МИКРОПРОВЕРКА / ${id}</span><b>${state.modelSeen.length} наблюдений</b></div><p>${story.lesson.text}</p><div class="case-model-buttons">${labels.map((label,i)=>`<button type="button" data-model-value="${id==='005'?[34,35,40][i]:id==='004'?[200,600][i]:id==='006'?[0,1,2,3][i]:i}">${label}</button>`).join('')}</div><div class="case-model-log" role="status">${state.modelDone?'Модель пройдена. Можно переходить к верстаку.':'Нажми кнопки по очереди и сравни результат.'}</div></section>`;
-}
-function bindExtraModel(id){
-  const story=extraCases[id],host=$('#case-model');if(!host)return;
-  host.querySelectorAll('[data-model-value]').forEach(button=>button.onclick=()=>{
-    const value=Number(button.dataset.modelValue);if(!state.modelSeen.includes(value))state.modelSeen.push(value);state.modelValue=value;state.modelDone=modelComplete(id,state.modelSeen,state.modelValue);
-    host.querySelector('.case-model-head b').textContent=`${state.modelSeen.length} наблюдений`;
-    host.querySelector('.case-model-log').textContent=state.modelDone?'Модель пройдена. Теперь проверь настоящую прошивку на верстаке.':`Зафиксировано: ${button.textContent}. Следи за условием и данными.`;
-    const next=comicIntro.querySelector('[data-story-action]');if(next){next.disabled=!state.modelDone;next.textContent=state.modelDone?'Открыть верстак ремонта →':'Сначала зафиксируй все контрольные значения';}
-    queueSave();
-  });
-}
 function setExtraStage(stage){
   const id=state.activeCase;if(!extraCases[id])return;
   state.caseStage=stage;state.caseReached=Math.max(state.caseReached,stage);
@@ -816,7 +798,7 @@ function renderExtraCase(){
   const common={room:state.room,location:`${story.location} · ДЕЛО ${id}`,caption:`РАССЛЕДОВАНИЕ / ${stage+1} ИЗ 5`};
   if(stage===0)return renderStoryBeat({...common,frame:story.frames[0],status:'НОВАЯ ЖАЛОБА',kicker:`ДЕЛО ${id} / ВХОДЯЩИЙ СИГНАЛ`,title:story.opening.title,text:story.opening.text,voice:story.opening.voice,actionLabel:'Осмотреть устройство →',action:()=>setExtraStage(1)});
   if(stage===1)return renderStoryBeat({...common,frame:story.frames[1],status:'УЛИКА НАЙДЕНА',kicker:`ДЕЛО ${id} / ИЗМЕРЕНИЕ`,title:story.evidence.title,text:story.evidence.text,voice:`«${story.evidence.detail}»`,extra:`<div class="signal-comparison">${story.evidence.values.map((value,i)=>`<div class="evidence-strip${i===story.evidence.values.length-1?' is-good':''}"><b>ФАКТ ${i+1}</b><small>${value}</small></div>`).join('')}</div>`,actionLabel:'Разобрать улику →',action:()=>setExtraStage(2)});
-  if(stage===2)return renderStoryBeat({...common,frame:story.frames[2],status:'ГИПОТЕЗА',kicker:`ДЕЛО ${id} / ОБУЧАЮЩИЙ РАЗБОР`,title:story.lesson.title,text:story.lesson.text,voice:story.lesson.voice,extra:extraModelMarkup(id,story),actionLabel:state.modelDone?'Открыть верстак ремонта →':'Сначала пройти микропроверку',action:()=>{if(state.modelDone)setExtraStage(3);},onReady:()=>bindExtraModel(id)});
+  if(stage===2)return renderStoryBeat({...common,frame:story.frames[2],status:'ГИПОТЕЗА',kicker:`ДЕЛО ${id} / ОБУЧАЮЩИЙ РАЗБОР`,title:story.lesson.title,text:story.lesson.text,voice:story.lesson.voice,extra:modelMarkup(),actionLabel:state.modelDone?'Открыть верстак ремонта →':'Сначала пройти микропроверку',action:()=>{if(state.modelDone)setExtraStage(3);},onReady:()=>bindModel(id,state,queueSave)});
   if(stage===3)return renderStoryBeat({...common,frame:story.frames[3],status:'ПРОВЕРЯЕМ ГИПОТЕЗУ',kicker:`ДЕЛО ${id} / РЕМОНТ`,title:story.repair.title,text:story.repair.text,voice:`«${story.repair.hint}»`,extra:`<details class="repair-hint"><summary>Подсказка по ремонту</summary><p>${story.repair.hint}</p></details>`,actionLabel:'Открыть верстак →',action:()=>openWorkbench(story.mission)});
   return renderStoryBeat({...common,frame:story.frames[4],status:'ДЕЛО ЗАКРЫТО',kicker:`ДЕЛО ${id} / ОТЧЁТ ПРИНЯТ`,title:story.ending.title,text:story.ending.text,voice:story.ending.voice,extra:renderSkillSummary(),actionLabel:'Закрыть папку и открыть архив →',action:completeCurrentCase});
 }

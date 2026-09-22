@@ -51,7 +51,8 @@ export function restoreGame(raw) {
   game.caseReached = Math.max(game.caseStage,integer(raw.caseReached,0,4));
   game.modelSeen = list(raw.modelSeen,[0,1,2,3,25,34,35,40,200,600]);
   game.modelValue = integer(raw.modelValue,0,600,0);
-  game.modelDone = modelComplete(game.activeCase,game.modelSeen,game.modelValue);
+  game.modelSetting = ['35','45','and','or'].includes(raw.modelSetting) ? raw.modelSetting : '';
+  game.modelDone = modelComplete(game.activeCase,game.modelSeen,game.modelValue,game.modelSetting);
   game.traceBound = raw.traceBound === 3 ? 3 : 2;
   game.traceStep = integer(raw.traceStep, 0, 14);
   game.observation = signalSnapshot(raw.observation);
@@ -99,7 +100,7 @@ export function restoreWorkshop(raw, validPins, missionCount) {
   return {drafts, activeIndex:integer(raw?.activeIndex,0,missionCount), mode:raw?.mode === 'observe' ? 'observe' : 'repair', completed:new Set(list(raw?.completed,Array.from({length:missionCount},(_,i)=>i)))};
 }
 
-const caseFields = ['started','room','clues','inventory','unlocked','completed',...flags,'introStep','journal','view','workbenchIndex','workbenchMode','case2Stage','case2Reached','observation','repairResult','traceStep','traceBound','caseStage','caseReached','modelSeen','modelValue','modelDone'];
+const caseFields = ['started','room','clues','inventory','unlocked','completed',...flags,'introStep','journal','view','workbenchIndex','workbenchMode','case2Stage','case2Reached','observation','repairResult','traceStep','traceBound','caseStage','caseReached','modelSeen','modelValue','modelDone','modelSetting'];
 export function caseSnapshot(state){
   const serial=serializeGame(state);
   return Object.fromEntries(caseFields.filter(key=>key in serial).map(key=>[key,structuredClone(serial[key])]));

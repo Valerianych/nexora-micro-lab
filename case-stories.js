@@ -44,11 +44,11 @@ export const extraCases = {
   }
 };
 
-export function modelComplete(id, seen, value) {
-  if(id==='003') return [0,1,2].every(v=>seen.includes(v)) && value===2;
+export function modelComplete(id, seen, value, setting) {
+  if(id==='003') return [0,1,2].every(v=>seen.includes(v));
   if(id==='004') return [200,600].every(v=>seen.includes(v));
-  if(id==='005') return [34,35,40].every(v=>seen.includes(v)) && value===35;
-  if(id==='006') return [0,1,2,3].every(v=>seen.includes(v)) && value===3;
+  if(id==='005') return setting==='35' && [34,35,40].every(v=>seen.includes(v));
+  if(id==='006') return setting==='or' && [0,1,2,3].every(v=>seen.includes(v));
   return false;
 }
 export function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}

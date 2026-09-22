@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node build.mjs",
     "start": "node serve.mjs",
-    "check": "node verify-progress.mjs && node verify-media.mjs"
+    "check": "node verify-progress.mjs && node verify-media.mjs",
+    "check:browser": "node verify-browser.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -22,6 +23,7 @@
     "esbuild": "^0.25.0"
   },
   "devDependencies": {
+    "playwright": "^1.62.1",
     "sharp": "^0.35.4"
   }
 }

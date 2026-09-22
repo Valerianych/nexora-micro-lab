@@ -14,6 +14,7 @@ import {bracketMatching,defaultHighlightStyle,HighlightStyle,indentOnInput,synta
 import {autocompletion,closeBrackets,closeBracketsKeymap,completionKeymap,snippetCompletion} from '@codemirror/autocomplete';
 import {lintGutter,linter,setDiagnosticsEffect} from '@codemirror/lint';
 import {tags} from '@lezer/highlight';
+import {cpp} from '@codemirror/lang-cpp';
 
 const $=id=>document.getElementById(id), make=(tag,attrs={})=>Object.assign(document.createElement(tag),attrs);
 const palette=['#e04f50','#2f3545','#3985c9','#65a947','#bf8a2e'];
@@ -35,19 +36,29 @@ window.addEventListener('pagehide',saveWorkshop);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveWorkshop();});
 const board=$('board');const stage=make('div',{className:'stage'});board.append(stage);stage.append($('wires'));stage.append(board.querySelector('.board-hint'));
 const svg=$('wires');svg.setAttribute('width','640');svg.setAttribute('height','430');
+let selectedWire=null;
+const wireTools=make('div',{className:'wire-tools',hidden:true});
+wireTools.setAttribute('role','group');wireTools.setAttribute('aria-label','Выбранный провод');
+const wireName=make('strong');
+const wireDelete=make('button',{id:'delete-selected-wire',textContent:'Удалить провод'});
+const wireCancel=make('button',{textContent:'×',ariaLabel:'Снять выбор провода'});
+wireTools.append(wireName,wireDelete,wireCancel);stage.append(wireTools);
+wireDelete.onclick=()=>removeWire(selectedWire);
+wireCancel.onclick=()=>chooseWire(null);
+board.addEventListener('click',event=>{if(!event.target.closest('.wire-tools,.wire-group'))chooseWire(null);});
 const codeField=$('code'),codeMount=$('code-editor'),codeEditable=new Compartment();
 let codeView=null,compileDiags=[];
 
 const arduinoHighlight=HighlightStyle.define([
-  {tag:tags.comment,color:'#6f876f',fontStyle:'italic'},
-  {tag:[tags.keyword,tags.controlKeyword],color:'#c65bc7',fontWeight:'700'},
-  {tag:[tags.typeName,tags.definition(tags.typeName)],color:'#167c9e',fontWeight:'650'},
-  {tag:[tags.function(tags.variableName),tags.labelName],color:'#9a4d00'},
-  {tag:tags.variableName,color:'#1c5f92'},
-  {tag:tags.number,color:'#bb4f1e'},
-  {tag:tags.bool,color:'#8b3c8f',fontWeight:'700'},
-  {tag:tags.string,color:'#2b8152'},
-  {tag:tags.operator,color:'#a23a3a'},
+  {tag:tags.comment,color:'#a2b59c',fontStyle:'italic'},
+  {tag:[tags.keyword,tags.controlKeyword],color:'#eea3ee',fontWeight:'700'},
+  {tag:[tags.typeName,tags.definition(tags.typeName)],color:'#74d6ed',fontWeight:'650'},
+  {tag:[tags.function(tags.variableName),tags.labelName],color:'#ffd38a'},
+  {tag:tags.variableName,color:'#a9d4ff'},
+  {tag:tags.number,color:'#ffb98e'},
+  {tag:tags.bool,color:'#eea3ee',fontWeight:'700'},
+  {tag:tags.string,color:'#a8dfac'},
+  {tag:tags.operator,color:'#f7ada7'},
 ]);
 const editorTheme=EditorView.theme({
   '&':{height:'100%',fontSize:'14px',background:'#172334',color:'#e8eff5'},
@@ -103,7 +114,7 @@ function initCodeEditor(){
   if(!codeMount||!codeField)return;
   codeView=new EditorView({
     state:EditorState.create({doc:codeField.value,extensions:[
-      codeEditable.of(EditorView.editable.of(true)),lineNumbers(),highlightSpecialChars(),history(),drawSelection(),bracketMatching(),closeBrackets(),indentOnInput(),syntaxHighlighting(defaultHighlightStyle),syntaxHighlighting(arduinoHighlight),editorTheme,highlightActiveLine(),
+      codeEditable.of(EditorView.editable.of(true)),cpp(),lineNumbers(),highlightSpecialChars(),history(),drawSelection(),bracketMatching(),closeBrackets(),indentOnInput(),syntaxHighlighting(defaultHighlightStyle,{fallback:true}),syntaxHighlighting(arduinoHighlight),editorTheme,highlightActiveLine(),
       keymap.of([...closeBracketsKeymap,...completionKeymap,...defaultKeymap,...historyKeymap,indentWithTab]),
       autocompletion({override:[completionSource],activateOnTyping:true,defaultKeymap:true,maxRenderedOptions:12}),
       linter(view=>[...analyzeSketch(view.state.doc.toString()),...compileDiags],{delay:550}),lintGutter(),placeholder('Напиши программу Arduino…'),
@@ -122,7 +133,7 @@ const partSpecs=[
  {id:'uno',tag:'wokwi-arduino-uno',label:'ARDUINO UNO',x:24,y:125,w:275,h:202,scale:1,pins:['13','12','2','5V','GND.2','A0']},
  {id:'r',tag:'wokwi-resistor',label:'РЕЗИСТОР · 220 Ω',x:377,y:72,w:120,h:25,scale:1.8},
  {id:'led',tag:'wokwi-led',label:'СВЕТОДИОД',x:515,y:165,w:72,h:80,scale:1.8},
- {id:'button',tag:'wokwi-pushbutton',label:'КНОПКА',x:407,y:296,w:102,h:75,scale:1.3},
+ {id:'button',tag:'wokwi-pushbutton',label:'КНОПКА',x:407,y:272,w:102,h:75,scale:1.3},
  {id:'sensor',tag:'div',label:'ДАТЧИК TMP36',x:520,y:285,w:116,h:92,scale:1,virtualPins:sensorPins},
 ];
 
@@ -182,7 +193,8 @@ for(const row of 'abcdefghij'){
   }
 }
 bbToggle.onclick=()=>{
-  stop();breadboard=!breadboard;bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);
+  if(testRunning||busy)return;
+  chooseWire(null);stop();breadboard=!breadboard;bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);
   if(!breadboard){wires=wires.filter(w=>!w.a.startsWith('bb:')&&!w.b.startsWith('bb:'));selectPin(null);}
   bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';renderWires();
   feedback(breadboard?'Попробуй соединить D13 с A1, а E1 — с резистором. Между A1 и E1 провод не нужен: они уже соединены внутри платы.':'Макетная плата убрана. Её провода удалены.');
@@ -191,19 +203,59 @@ bbToggle.onclick=()=>{
 for(const c of palette){const btn=make('button',{title:'Выбрать цвет провода'});btn.style.background=c;btn.setAttribute('aria-label','Цвет провода: '+({[palette[0]]:'красный',[palette[1]]:'чёрный',[palette[2]]:'синий',[palette[3]]:'зелёный',[palette[4]]:'жёлтый'}[c]));btn.classList.toggle('selected',color===c);btn.onclick=()=>{color=c;for(const child of $('colors').children)child.classList.toggle('selected',child===btn);};$('colors').append(btn);}
 
 function selectPin(id){selected=id;for(const [key,{btn}] of pins){btn.classList.toggle('selected',key===id);btn.setAttribute('aria-pressed',String(key===id));}}
-function pickPin(id){if(testRunning||busy)return;if(selected===id){selectPin(null);return;}if(!selected){selectPin(id);$('connect-help').textContent=`Выбран ${displayPin(id)}. Теперь нажми на контакт назначения. Esc — отмена.`;return;}addWire(selected,id);selectPin(null);}
+function pickPin(id){if(testRunning||busy)return;chooseWire(null);if(selected===id){selectPin(null);return;}if(!selected){selectPin(id);$('connect-help').textContent=`Выбран ${displayPin(id)}. Теперь нажми на контакт назначения. Esc — отмена.`;return;}addWire(selected,id);selectPin(null);}
 function addWire(a,b){if(!pins.has(a)||!pins.has(b)||a===b||(!breadboard&&(a.startsWith('bb:')||b.startsWith('bb:'))))throw new Error('Выбери два разных доступных контакта');if(wires.some(w=>w.a===a&&w.b===b||w.a===b&&w.b===a)){feedback('Это соединение уже есть.');return;}stop();wires.push({a,b,color});renderWires();feedback(inspectCircuit(wires,false,breadboard).reason);}
-function drawWires(){svg.replaceChildren();const rect=stage.getBoundingClientRect();for(const w of wires){const a=pins.get(w.a).btn.getBoundingClientRect(),b=pins.get(w.b).btn.getBoundingClientRect(),x1=a.x+a.width/2-rect.x,y1=a.y+a.height/2-rect.y,x2=b.x+b.width/2-rect.x,y2=b.y+b.height/2-rect.y;const p=document.createElementNS('http://www.w3.org/2000/svg','path');const middle=(x1+x2)/2;p.setAttribute('d',`M ${x1},${y1} C ${middle},${y1} ${middle},${y2} ${x2},${y2}`);p.setAttribute('stroke',w.color);svg.append(p);}}
-function renderWires(){drawWires();$('wire-count').textContent=`Проводов: ${wires.length}`;$('wire-list').replaceChildren();wires.forEach((w,i)=>{const li=make('li');const text=make('span',{textContent:`${displayPin(w.a)} — ${displayPin(w.b)}`});const remove=make('button',{textContent:'×',title:'Удалить провод'});remove.setAttribute('aria-label','Удалить '+text.textContent);remove.onclick=()=>{stop();wires.splice(i,1);renderWires();feedback(inspectCircuit(wires,false,breadboard).reason);};li.append(text,remove);$('wire-list').append(li);});$('connect-help').textContent='Контакты отмечены кружками. Компоненты можно перемещать за название. На узком экране прокрути стол вправо.';queueDraftSave();}
-window.addEventListener('resize',drawWires);document.addEventListener('keydown',e=>{if(e.key==='Escape')selectPin(null);});
-$('undo').onclick=()=>{stop();wires.pop();renderWires();feedback(inspectCircuit(wires,false,breadboard).reason);};
+function wireLabel(w){return `${displayPin(w.a)} — ${displayPin(w.b)}`;}
+function chooseWire(w,x=board.scrollLeft+20,y=board.scrollTop+20){
+  selectedWire=w;wireTools.hidden=!w;
+  if(w){
+    selectPin(null);wireName.textContent=wireLabel(w);
+    const width=Math.min(290,board.clientWidth-24);
+    wireTools.style.width=width+'px';
+    wireTools.style.left=Math.max(board.scrollLeft+12,Math.min(x,board.scrollLeft+board.clientWidth-width-12))+'px';
+    wireTools.style.top=Math.max(board.scrollTop+12,Math.min(y,board.scrollTop+board.clientHeight-115))+'px';
+  }
+  svg.querySelectorAll('.wire-group').forEach((group,i)=>{group.classList.toggle('is-selected',wires[i]===w);group.setAttribute('aria-pressed',String(wires[i]===w));});
+}
+function removeWire(w){
+  const index=wires.indexOf(w);if(index<0||testRunning||busy)return;
+  stop();wires.splice(index,1);chooseWire(null);renderWires();
+  feedback(`Удалён провод ${wireLabel(w)}. ${inspectCircuit(wires,false,breadboard).reason}`);
+}
+function drawWires(){
+  svg.replaceChildren();const rect=stage.getBoundingClientRect();
+  for(const w of wires){
+    const a=pins.get(w.a).btn.getBoundingClientRect(),b=pins.get(w.b).btn.getBoundingClientRect();
+    const x1=a.x+a.width/2-rect.x,y1=a.y+a.height/2-rect.y,x2=b.x+b.width/2-rect.x,y2=b.y+b.height/2-rect.y,middle=(x1+x2)/2;
+    const group=document.createElementNS('http://www.w3.org/2000/svg','g');
+    group.setAttribute('class','wire-group'+(selectedWire===w?' is-selected':''));
+    group.setAttribute('role','button');group.setAttribute('tabindex','0');group.setAttribute('aria-label','Выбрать провод '+wireLabel(w));group.setAttribute('aria-pressed',String(selectedWire===w));
+    const d=`M ${x1},${y1} C ${middle},${y1} ${middle},${y2} ${x2},${y2}`;
+    for(const [cls,stroke] of [['wire-visible',w.color],['wire-hit','transparent']]){
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('class',cls);path.setAttribute('d',d);path.setAttribute('stroke',stroke);group.append(path);
+    }
+    group.onclick=event=>{if(testRunning||busy)return;event.stopPropagation();chooseWire(w,event.clientX-rect.x+12,event.clientY-rect.y+12);};
+    group.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();chooseWire(w);wireDelete.focus();}else if(event.key==='Delete'){event.preventDefault();removeWire(w);}};
+    svg.append(group);
+  }
+}
+function renderWires(){
+  if(!wires.includes(selectedWire))chooseWire(null);
+  drawWires();$('wire-count').textContent=`Проводов: ${wires.length}`;$('wire-list').replaceChildren();
+  wires.forEach(w=>{const li=make('li');const label=make('span',{textContent:wireLabel(w)});const remove=make('button',{textContent:'×',title:'Удалить провод'});remove.setAttribute('aria-label','Удалить '+wireLabel(w));remove.onclick=()=>removeWire(w);li.append(label,remove);$('wire-list').append(li);});
+  $('connect-help').textContent='Для удаления нажми на провод на схеме, затем «Удалить провод». Контакты соединяются двумя нажатиями. Детали можно двигать за название.';queueDraftSave();
+}
+window.addEventListener('resize',()=>{chooseWire(null);drawWires();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){selectPin(null);chooseWire(null);}if(e.key==='Delete'&&selectedWire&&!e.target.closest('input,textarea,[contenteditable="true"],.cm-editor')){e.preventDefault();removeWire(selectedWire);}});
+$('undo').onclick=()=>{if(testRunning||busy)return;stop();wires.pop();renderWires();feedback(inspectCircuit(wires,false,breadboard).reason);};
 $('reset').onclick=()=>{if(!window.confirm('Сбросить программу и провода текущего задания?'))return;loadMission(mission,{mode:workbenchMode,reset:true});};
 
 function renderLesson(){
  const sensorVisible=mission>=6; sensorControl.hidden=!sensorVisible; const sensorPart=parts.get('sensor'); if(sensorPart) sensorPart.part.hidden=!sensorVisible;
  const free=mission===FREE, m=missions[Math.min(mission,FREE-1)], observing=workbenchMode==='observe';
- document.querySelector('.lesson>.eyebrow').textContent=observing?'ДЕЛО 002 / НАБЛЮДЕНИЕ':mission===3?'ДЕЛО 002 / РЕМОНТ':free?'СВОБОДНЫЙ ЭКСПЕРИМЕНТ':`ПЕРВЫЕ ШАГИ / МИССИЯ 0${mission+1}`;
- document.querySelector('.lesson h1').textContent=observing?'Найди сбой.':free?'Твоя идея.':['Подай сигнал.','Измени ритм.','Управляй светом.','Повтори трижды.','Собери ритм.','Дай имя действию.'][mission];
+ document.querySelector('.lesson>.eyebrow').textContent=observing?'ДЕЛО 002 / НАБЛЮДЕНИЕ':free?'СВОБОДНЫЙ ЭКСПЕРИМЕНТ':`ДЕЛО ${String(mission<3?1:mission-1).padStart(3,'0')} / РЕМОНТ`;
+ document.querySelector('.lesson h1').textContent=observing?'Найди сбой.':free?'Твоя идея.':['Подай сигнал.','Измени ритм.','Управляй светом.','Повтори трижды.','Собери ритм.','Дай имя действию.','Поймай перегрев.','Запусти протокол.'][mission];
+ document.querySelector('.workspace-head h2').textContent=free?'Собственное устройство':m.name;
  document.querySelector('.intro').textContent=observing?'Код исходного устройства. Запусти и посмотри, как ведёт себя световой индикатор.':free?'Экспериментируй с кодом, проводами и кнопкой.':'Собери устройство, попробуй новый приём и проверь результат.';
  document.querySelector('.goal p').textContent=observing?'Запусти программу, дождись двух серий и запиши наблюдение.':free?'Например, сделай мигание только при нажатой кнопке.':m.goal;
  $('check').textContent=observing?'Записать наблюдение':free?'Проверить цепь':completed.has(mission)?'✓ Пройдено · проверить ещё':'Проверить миссию';
@@ -229,7 +281,7 @@ function loadMission(index,options={}){
  if(index<FREE)setSource(workbenchMode==='observe'?missions[index].code:draft?.code??missions[index].code);
  else if(draft)setSource(draft.code);
  bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';
- selectPin(null);lastHex=null;lastSource='';setCodeEditable(workbenchMode!=='observe');renderLesson();renderWires();
+ selectPin(null);chooseWire(null);lastHex=null;lastSource='';setCodeEditable(workbenchMode!=='observe');renderLesson();renderWires();
  feedback(draft?'Черновик восстановлен: код и соединения на месте. Нажми «Запустить», чтобы включить плату.':workbenchMode==='observe'?'Исходная программа готова к наблюдению. Проверь провода и нажми «Запустить».':'Начни с объяснения слева. Существующие соединения остаются на столе.');
  restoringDraft=false;queueDraftSave();
  window.dispatchEvent(new CustomEvent('nexora:mission-change',{detail:{mission:index,name:index<FREE?missions[index].name:'Свободная мастерская'}}));
@@ -238,12 +290,13 @@ $('prev').onclick=()=>{step=Math.max(0,step-1);renderLesson();};
 $('next').onclick=()=>{if(workbenchMode==='observe'||step===missions[mission].steps.length-1)checkMission();else{step++;renderLesson();}};
 
 function press(value){if(testRunning)return;const button=parts.get('button').element;button.pressed=value;document.querySelector('.press-button').classList.toggle('held',value);if(sim&&running)sim.setButton(value);}
-function stop(){runId++;running=false;busy=false;testRunning=false;cancelAnimationFrame(raf);if(cancelCompile){const cancel=cancelCompile;cancelCompile=null;cancel();}else if(compileWorker){compileWorker.terminate();compileWorker=null;}parts.get('uno').element.ledPower=false;parts.get('button').element.pressed=false;document.querySelector('.press-button').classList.remove('held');sim=null;setLight({led:false,led13:false});$('run').disabled=false;$('run').textContent='▶ Запустить';$('stop').disabled=true;$('runtime-status').textContent='Остановлено';$('check').disabled=false;menu.disabled=false;setCodeEditable(workbenchMode!=='observe');}
+function stop(){temperatureInput.disabled=false;runId++;running=false;busy=false;testRunning=false;cancelAnimationFrame(raf);if(cancelCompile){const cancel=cancelCompile;cancelCompile=null;cancel();}else if(compileWorker){compileWorker.terminate();compileWorker=null;}parts.get('uno').element.ledPower=false;parts.get('button').element.pressed=false;document.querySelector('.press-button').classList.remove('held');sim=null;setLight({led:false,led13:false});$('run').disabled=false;$('run').textContent='▶ Запустить';$('stop').disabled=true;$('runtime-status').textContent='Остановлено';$('check').disabled=false;menu.disabled=false;setCodeEditable(workbenchMode!=='observe');}
 function compileSource(source){return new Promise((resolve,reject)=>{const worker=new Worker(new URL('avr/worker.js',document.baseURI),{type:'module'});compileWorker=worker;const timeout=setTimeout(()=>{worker.terminate();if(compileWorker===worker)compileWorker=null;reject(new Error('Компилятор не ответил за 3 минуты. Обнови страницу и попробуй ещё раз.'));},180000);const cleanup=()=>{clearTimeout(timeout);worker.terminate();if(compileWorker===worker){compileWorker=null;cancelCompile=null;}};cancelCompile=()=>{cleanup();reject(new Error('Компиляция остановлена'));};worker.onmessage=e=>{cleanup();e.data.ok?resolve(e.data.result):reject(new Error(e.data.error?.message||'Не удалось скомпилировать программу'));};worker.onerror=e=>{cleanup();reject(new Error(e.message||'Не удалось загрузить компилятор'));};worker.postMessage({source:'#include <Arduino.h>\n#line 1 "sketch.ino"\n'+source,sensors:[],assetsBase:new URL('avr/',document.baseURI).href});});}
 async function run(){
  stop();const id=runId,source=currentCode();compileDiags=[];showCodeDiagnostics(analyzeSketch(source));
  const circuit=inspectCircuit(wires,false,breadboard);
  busy=true;$('run').disabled=true;$('run').textContent='Собираю программу…';$('stop').disabled=false;$('check').disabled=true;$('runtime-status').textContent='Компиляция';
+ feedback('Собираю программу. После компиляции плата запустится автоматически.');
  log('Компиляция Arduino C++…\nПри первом запуске загружаются инструменты (~18 МБ и файлы Arduino).');
  try{
    let result;if(lastHex&&lastSource===source)result={hex:lastHex,fitsTarget:true};else result=await compileSource(source);
@@ -261,6 +314,7 @@ $('run').onclick=run;$('stop').onclick=()=>{stop();feedback('Программа 
  $('check-code').onclick=()=>showCodeDiagnostics([...analyzeSketch(currentCode()),...compileDiags]);
 
 async function checkMission(){
+ if(testRunning||busy)return;
  const circuit=inspectCircuit(wires,false,breadboard);
  if(mission===FREE){feedback(circuit.reason,circuit.led?'success':'error');return;}
  if(!circuit.led||circuit.error){feedback(circuit.reason,'error');return;}
@@ -275,22 +329,55 @@ async function checkMission(){
  if(mission===6||mission===7){
    const sensor=inspectSensor(wires,breadboard);
    if(!sensor.connected){feedback(sensor.reason,'error');return;}
-   if(!running||!sim){feedback('Сначала запусти программу и дай датчику несколько секунд.');return;}
    const source=currentCode().replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g,'');
-   if(mission===6){
-     if(!/\banalogRead\s*\(/.test(source)||!/\btemperature\s*>=\s*limitC/.test(source)||!/\bint\s+limitC\s*=\s*35\b/.test(source)){feedback('Нужны analogRead(A0), переменная limitC = 35 и сравнение temperature >= limitC.','error');return;}
-     const trials=[];for(const value of [34,35,40,25]){sim.setTemperature(value);sim.advance(900000);trials.push({value,led:sim.led});}
-     if(trials.some(t=>t.led!== (t.value>=35))){feedback('Проверь реакцию на границе: при 34 °C свет выключен, при 35 °C и выше включён.','error');return;}
-     complete({count:trials.filter(t=>t.led).length});return;
-   }
-   if(!/\banalogRead\s*\(/.test(source)||!/\bdigitalRead\s*\(/.test(source)||!source.includes('||')||!/\bdurations\s*\[\s*i\s*\]/.test(source)){feedback('В итоговом протоколе нужны датчик, кнопка, оператор ||, массив durations и цикл.','error');return;}
-   const trials=[{value:25,pressed:false,alarm:false},{value:40,pressed:false,alarm:true},{value:25,pressed:true,alarm:true},{value:40,pressed:true,alarm:true}];
-   const expected=[.1,.15,.25,.15,.5,1.15];
-   const hasPattern=(transitions,pattern)=>{const intervals=transitions.slice(1).map((item,index)=>item.time-transitions[index].time);return intervals.some((_,start)=>pattern.every((duration,index)=>Math.abs(intervals[start+index]-duration)<.04));};
-   const results=[];for(const trial of trials){const test=new Emulator(lastHex,wires.map(w=>({...w})),{breadboard,temperature:trial.value});test.setButton(trial.pressed);test.advance(70000000);results.push(trial.alarm?hasPattern(test.transitions,expected):test.transitions.length===0&&!test.led);}
-   if(!results.every(Boolean)){feedback('Проверь четыре сочетания: норма, перегрев, кнопка и оба события.','error');return;}
-   complete({count:results.length});return;
+   if(mission===6&&(!/\banalogRead\s*\(/.test(source)||!/\btemperature\s*>=\s*limitC/.test(source)||!/\bint\s+limitC\s*=\s*35\b/.test(source))){feedback('Нужны analogRead(A0), переменная limitC = 35 и сравнение temperature >= limitC.','error');return;}
+   if(mission===7&&(!/\banalogRead\s*\(/.test(source)||!/\bdigitalRead\s*\(/.test(source)||!source.includes('||')||!/\bdurations\s*\[\s*i\s*\]/.test(source)||!/\bfor\s*\(/.test(source)||!/\bvoid\s+blink\s*\(\s*int\s+/.test(source))){feedback('В итоговом протоколе нужны датчик, кнопка, оператор ||, массив durations, цикл for и функция blink.','error');return;}
+   const hex=lastHex,snapshot=wires.map(w=>({...w})),checkingMission=mission;
+   stop();const id=runId;testRunning=true;chooseWire(null);setCodeEditable(false);temperatureInput.disabled=true;menu.disabled=true;
+   $('check').disabled=true;$('run').disabled=true;$('stop').disabled=false;$('runtime-status').textContent='Испытываю устройство';
+   // Yield between CPU slices so Stop, drawing and progress remain responsive.
+   const advance=async(test,cycles)=>{
+     for(let left=cycles;left>0;left-=500000){
+       if(id!==runId)return false;
+       test.advance(Math.min(left,500000));
+       if(test.fault)throw Error(test.fault);
+       await new Promise(resolve=>setTimeout(resolve,0));
+     }
+     return id===runId;
+   };
+   try{
+     if(checkingMission===6){
+       const test=new Emulator(hex,snapshot,{breadboard,temperature:25});
+       const readings=[25,34,35,40,34,45,25];
+       for(const value of readings){
+         feedback(`Проверяю ${value} °C: ожидается ${value>=35?'включение':'выключение'} охлаждения…`);
+         test.setTemperature(value);
+         if(!await advance(test,2000000))return;
+         if(test.led!==(value>=35))throw Error(`При ${value} °C свет должен быть ${value>=35?'включён':'выключен'}. Проверь порог, сравнение и обе ветки условия.`);
+       }
+       stop();complete({count:readings.length});log('Проверены 25, 34, 35, 40, 34, 45 и 25 °C. Включение на границе и выключение после остывания работают.');return;
+     }
+     const trials=[{value:25,pressed:false,alarm:false,label:'обычный режим'},{value:35,pressed:false,alarm:true,label:'ровно 35 °C'},{value:40,pressed:false,alarm:true,label:'только перегрев'},{value:25,pressed:true,alarm:true,label:'только кнопка'},{value:40,pressed:true,alarm:true,label:'обе причины'}];
+     const pattern=missions[7].pattern;
+     for(const [index,trial] of trials.entries()){
+       feedback(`Испытание ${index+1} из ${trials.length}: ${trial.label}. Проверяю сигнал…`);
+       const test=new Emulator(hex,snapshot,{breadboard,temperature:trial.value});test.setButton(trial.pressed);
+       if(!await advance(test,80000000))return;
+       const intervals=test.transitions.slice(1).map((item,i)=>item.time-test.transitions[i].time);
+       const correct=trial.alarm?intervals.length>=pattern.length*2&&intervals.every((duration,i)=>Math.abs(duration-pattern[i%pattern.length])<.04):test.transitions.length===0&&!test.led;
+       if(!correct)throw Error(`Не пройдено испытание «${trial.label}». ${trial.alarm?'Нужны повторяющиеся серии 100, 250, 500 мс с паузами 150 и 1150 мс.':'Без перегрева и нажатия свет должен быть выключен.'}`);
+       if(trial.alarm){
+         feedback(`Испытание ${index+1}: убираю обе причины. Текущая серия должна закончиться, а новая не начаться…`);
+         test.setTemperature(25);test.setButton(false);const normalAt=test.cpu.cycles/16000000;
+         if(!await advance(test,80000000))return;
+         if(test.led||test.transitions.some(t=>t.time>normalAt+2.5))throw Error('После остывания и отпускания кнопки тревога продолжается. Заверши текущую серию и снова прочитай входы.');
+       }
+     }
+     stop();complete({count:trials.length});log('Пройдены 5 сочетаний входов, включая границу 35 °C, и возврат к норме после каждой тревоги.');
+   }catch(error){if(id!==runId)return;stop();feedback(error.message,'error');log(error.message);}
+   return;
  }
+
  if(mission>2){
    const source=currentCode().replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g,'');
    if(mission===3){
@@ -308,7 +395,7 @@ async function checkMission(){
    if(changes.length<pattern.length*2+1){feedback('Дождись двух полных серий сигналов, затем проверь ещё раз.');return;}
    const tail=changes.slice(-(pattern.length*2+1)),intervals=tail.slice(1).map((v,i)=>v.time-tail[i].time);
    const matched=pattern.some((_,offset)=>intervals.every((v,i)=>Math.abs(v-pattern[(offset+i)%pattern.length])<.025));
-   const structure=mission===4?/\bdurations\s*\[/.test(source)&&/\bdurations\s*\[\s*i\s*\]/.test(source):/\bvoid\s+blink\s*\(\s*int\s+/.test(source);
+   const structure=mission===4?/\bfor\s*\(/.test(source)&&/\bdurations\s*\[\s*i\s*\]/.test(source):/\bvoid\s+blink\s*\(\s*int\s+/.test(source)&&/\bdelay\s*\(\s*duration\s*\)/.test(source);
    if(matched&&structure)complete();else feedback('Ритм или конструкция программы пока не соответствуют заданию. Проверь длительности вспышек, паузы и изучаемую конструкцию.','error');
    return;
  }
@@ -342,7 +429,12 @@ window.nexoraWorkshop={
     saveWorkshop();
     const clean=clearWorkshop({drafts,completed:[...completed],activeIndex:mission,mode:workbenchMode},indices);
     drafts=clean.drafts;completed=new Set(clean.completed);
-    writeProgress('workshop',{drafts,completed:[...completed],activeIndex:indices&&indices.includes(mission)?0:(indices?mission:0),mode:indices&&indices.includes(mission)?'repair':workbenchMode});
+    // Clear the in-memory draft too, otherwise the next load/pagehide saves it back.
+    if(!indices||indices.includes(mission)){
+      savingReady=false;clearTimeout(draftSaveTimer);
+      loadMission(indices?mission:0,{reset:true});savingReady=true;
+    }
+    writeProgress('workshop',{drafts,completed:[...completed],activeIndex:mission,mode:workbenchMode});
   },
   getState:()=>({mission,step,mode:workbenchMode,running,wires:[...wires],breadboard,temperature,code:currentCode()})
 };
