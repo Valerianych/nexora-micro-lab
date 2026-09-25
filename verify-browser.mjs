@@ -74,21 +74,21 @@ try{
     assert.ok((await page.locator('.lesson h1').innerText()).length>5);
     assert.match(await page.locator('.goal p').innerText(),id==='005'?/35/:id==='004'?/600/:/500/);
     if(id==='003'){
-      await connect('D13','Резистор 1');await connect('Резистор 2','LED A');await connect('LED C','GND');
+      await connect('Arduino D13','Резистор 1');await connect('Резистор 2','Светодиод A (+)');await connect('Светодиод C (−)','Arduino GND');
       assert.equal((await read()).wires.length,3);
       // Click the physical path, then delete using the in-canvas controls.
       const point=await page.locator('.wire-visible').first().evaluate(path=>{const p=path.getPointAtLength(path.getTotalLength()*.5),r=path.ownerSVGElement.getBoundingClientRect();return {x:r.x+p.x,y:r.y+p.y};});
       await page.mouse.click(point.x,point.y);await page.locator('#delete-selected-wire').waitFor();
       await page.locator('.workspace').screenshot({path:`out/wire-selection.png`.replace('out',out)});
       await page.locator('#delete-selected-wire').click();assert.equal((await read()).wires.length,2);
-      await connect('D13','Резистор 1');
-      await page.getByRole('button',{name:'Удалить LED C — GND',exact:true}).click();assert.equal((await read()).wires.length,2);await connect('LED C','GND');
+      await connect('Arduino D13','Резистор 1');
+      await page.getByRole('button',{name:'Удалить Светодиод C (−) — Arduino GND',exact:true}).click();assert.equal((await read()).wires.length,2);await connect('Светодиод C (−)','Arduino GND');
       await contrast();
       const styles=await page.locator('.cm-line span').evaluateAll(nodes=>[...new Set(nodes.map(n=>getComputedStyle(n).color))]);assert.ok(styles.length>=4,'C++ syntax is highlighted');
       await page.screenshot({path:`${out}/workbench-desktop.png`,fullPage:true});
     }
-    if(id==='005'){await connect('Датчик VCC','5V');await connect('Датчик GND','GND');await connect('Датчик OUT','A0');}
-    if(id==='006'){await connect('D2','Кнопка 1.l');await connect('Кнопка 2.l','GND');}
+    if(id==='005'){await connect('Датчик VCC','Arduino 5V');await connect('Датчик GND','Arduino GND');await connect('Датчик OUT','Arduino A0');}
+    if(id==='006'){await connect('Arduino D2','Кнопка 1L');await connect('Кнопка 2L','Arduino GND');}
     await run(index<6?5.5:0);await checkFailure();
     const fixed=index===4?missions[index].code.replace('{100, 250, 250}','{100, 250, 500}'):
       index===5?missions[index].code.replace('blink(200); // нужна вспышка 600 мс','blink(600);'):
@@ -123,7 +123,7 @@ try{
   console.log('PASS full reset and reload');
   // Recheck the wire controls on a phone viewport without changing story progress.
   await page.setViewportSize({width:390,height:844});await page.evaluate(()=>window.nexoraWorkshop.open(0));
-  await connect('D13','Резистор 1');
+  await connect('Arduino D13','Резистор 1');
   await page.locator('.wire-group').first().focus();await page.keyboard.press('Enter');
   const toolBox=await page.locator('.wire-tools').boundingBox();assert.ok(toolBox.x>=0&&toolBox.x+toolBox.width<=391,'wire controls stay inside phone viewport');
   await page.locator('#board').screenshot({path:`${out}/workbench-phone.png`});

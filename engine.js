@@ -48,7 +48,7 @@ export function inspectCircuit(wires, pressed=false, breadboard=false) {
   let error=null;
   if(same('uno:5V','uno:GND.1'))error='Питание 5V соединено напрямую с GND. Удали это соединение перед запуском.';
   if(unprotected)error='Светодиод подключён без последовательного резистора. Добавь резистор в цепь: он ограничивает ток.';
-  const reason=error||(!led?(reversed?'Светодиод подключён наоборот. Анод A должен быть со стороны выхода, катод C — со стороны GND.':'Цепь пока не замкнута. Соедини выход платы с анодом A через резистор, а катод C — с GND.'):'Цепь со светодиодом собрана. Можно проверять программу.');
+  const reason=error||(!led?(reversed?'Светодиод подключён наоборот. Светодиод A (+) — анод: подключи его к выходу Arduino через резистор. Светодиод C (−) — катод: подключи к Arduino GND.':'Цепь пока не замкнута. Подключи Arduino D13 к резистору 1, резистор 2 к светодиоду A (+), а светодиод C (−) к Arduino GND.'):'Цепь со светодиодом собрана. Можно проверять программу.');
   return {led,error,reason,n};
 }
 
@@ -57,7 +57,7 @@ export function inspectSensor(wires,breadboard=false){
   const powered=n.same('sensor:VCC','uno:5V')&&n.same('sensor:GND','uno:GND.2');
   const connected=powered&&n.same('sensor:OUT','uno:A0');
   const short=n.same('sensor:OUT','uno:GND.2')||n.same('sensor:OUT','uno:5V');
-  return {connected:connected&&!short,reason:short?'Выход датчика замкнут на питание или землю. Подключи OUT только к A0.':!connected?'Подключи датчик: VCC → 5V, GND → GND, OUT → A0.':'Датчик подключён к A0.'};
+  return {connected:connected&&!short,reason:short?'Выход датчика замкнут на питание или землю. Подключи Датчик OUT только к Arduino A0.':!connected?'Подключи Датчик VCC → Arduino 5V, Датчик GND → Arduino GND, Датчик OUT → Arduino A0.':'Датчик подключён к A0.'};
 }
 
 export class Emulator {

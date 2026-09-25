@@ -6,7 +6,8 @@
     "build": "node build.mjs",
     "start": "node serve.mjs",
     "check": "node verify-progress.mjs && node verify-media.mjs",
-    "check:browser": "node verify-browser.mjs"
+    "check:browser": "node verify-browser.mjs",
+    "check:workspace": "node verify-workspace.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

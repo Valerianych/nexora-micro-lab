@@ -94,6 +94,8 @@ export function restoreWorkshop(raw, validPins, missionCount) {
     if ((!/^\d+$/.test(key) && key !== '3-observe') || (key !== '3-observe' && Number(key) > missionCount) || !value || typeof value.code !== 'string') continue;
     drafts[key] = {
       code:value.code.slice(0,100000), temperature:integer(value.temperature,0,80,25), step:integer(value.step,0,20), breadboard:value.breadboard === true,
+      canvasWidth:integer(value.canvasWidth,1,10000),
+      positions:Object.fromEntries(Object.entries(value.positions||{}).filter(([id,p])=>['uno','r','led','button','sensor'].includes(id)&&p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<=10000&&p.y<=10000).map(([id,p])=>[id,{x:p.x,y:p.y}])),
       wires:Array.isArray(value.wires) ? value.wires.filter(w => w && validPins.has(w.a) && validPins.has(w.b) && w.a !== w.b && (value.breadboard || (!w.a.startsWith('bb:') && !w.b.startsWith('bb:')))).slice(0,100).map(w => ({a:w.a,b:w.b,color:/^#[0-9a-f]{6}$/i.test(w.color) ? w.color : '#e04f50'})) : [],
     };
   }

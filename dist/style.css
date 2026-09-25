@@ -325,3 +325,26 @@ header,.code-panel{color:#22364b}
 
 #wires .wire-group:focus{outline:none}
 .reset-confirm .danger{background:#8a2737;border-color:#8a2737;color:#fff}
+
+/* The visible circuit canvas and the area available for dragging are identical. */
+.board{height:clamp(540px,60vh,720px);overflow:auto}
+.stage{width:100%;min-width:760px;height:100%;min-height:520px}
+#wires,.stage.with-breadboard #wires{width:100%;height:100%}
+.stage.with-breadboard{height:1000px;min-height:1000px}
+.board.with-breadboard{height:clamp(600px,70vh,820px)}
+.breadboard-panel{left:calc(50% - 203px);top:570px}
+.workspace>.board-hint{position:static;margin:10px 0 0;color:#c0cddc;line-height:1.5}
+.part-title{width:max-content;max-width:none;touch-action:none}
+.pin .pin-label{white-space:nowrap;line-height:1.3}
+.pin.label-left .pin-label{left:auto;right:19px;top:50%;transform:translateY(-50%)}
+.pin.label-right .pin-label{left:19px;right:auto;top:50%;transform:translateY(-50%)}
+#sim-main .pin.guide-highlight{background:#266ac4;box-shadow:0 0 0 4px #266ac4,0 0 0 9px #fff}
+.pin.guide-highlight .pin-label{background:#1e559c;color:#fff;padding:4px 6px}
+.pin-help{display:flex;flex-direction:column;gap:4px;min-height:54px;padding:10px 12px;margin:0 0 12px;border:1px solid #455d78;border-radius:8px;background:#1c2b3e;color:#dce7f3;font-size:13px;line-height:1.45}
+.pin-help strong{color:#c8f36b}.pin-help span{max-width:75ch}
+.virtual-sensor{position:relative;z-index:4}
+.lesson .pin-reference{display:inline-block;padding:3px 6px;margin:2px 0;background:#dce9c3;color:#223c20;border:1px solid #9bae78;border-radius:5px;font:600 12px/1.5 system-ui,sans-serif;text-align:left;white-space:normal;vertical-align:baseline}
+.lesson .pin-reference:hover{background:#c8f36b;color:#172e15;border-color:#c8f36b}
+.connection-instruction{display:flex;flex-direction:column;gap:9px;margin:10px 0 16px}
+.connection-instruction-row{display:flex;align-items:center;flex-wrap:wrap;gap:5px;line-height:1.4}
+#arrange-parts{font-size:12px;padding:7px 9px}

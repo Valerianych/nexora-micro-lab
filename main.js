@@ -4,6 +4,7 @@ import '@wokwi/elements/dist/esm/resistor-element.js';
 import '@wokwi/elements/dist/esm/pushbutton-element.js';
 import {Emulator,inspectCircuit,inspectSensor} from './engine.js';
 import {missions} from './lessons.js';
+import {componentNames,pinLabel,displayPin,pinDescription,connectionMarkup,ledConnections} from './circuit-labels.js';
 import {readProgress, writeProgress, restoreWorkshop, clearWorkshop} from './progress.js';
 import {analyzeSiren} from './case-two.js';
 import {arduinoWords,serialWords,analyzeSketch,compilerDiagnostics,sketchSymbols} from './arduino-language.js';
@@ -24,18 +25,23 @@ const FREE=missions.length;
 let breadboard=false;
 let workbenchMode='repair',drafts={},savingReady=false,restoringDraft=false,draftSaveTimer;
 let temperature=25;
+let layoutReady=false,layoutWidth=0;
 const sensorPins=[{name:'VCC',x:16,y:14},{name:'GND',x:16,y:58},{name:'OUT',x:105,y:36}];
 function saveWorkshop(){
   clearTimeout(draftSaveTimer);
   if(!savingReady||restoringDraft)return;
-  drafts[workbenchMode==='observe'?'3-observe':mission]={code:currentCode(),wires:wires.map(w=>({...w})),breadboard,temperature,step};
+  const key=workbenchMode==='observe'?'3-observe':mission;
+  drafts[key]={code:currentCode(),wires:wires.map(w=>({...w})),breadboard,temperature,step,positions:layoutReady?capturePositions():drafts[key]?.positions,canvasWidth:layoutWidth||drafts[key]?.canvasWidth};
   writeProgress('workshop',{drafts,completed:[...completed],activeIndex:mission,mode:workbenchMode});
 }
 function queueDraftSave(){if(!savingReady||restoringDraft)return;clearTimeout(draftSaveTimer);draftSaveTimer=setTimeout(saveWorkshop,180);}
 window.addEventListener('pagehide',saveWorkshop);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveWorkshop();});
 const board=$('board');const stage=make('div',{className:'stage'});board.append(stage);stage.append($('wires'));stage.append(board.querySelector('.board-hint'));
-const svg=$('wires');svg.setAttribute('width','640');svg.setAttribute('height','430');
+const svg=$('wires');
+board.after(stage.querySelector('.board-hint'));
+const pinHelp=make('div',{id:'pin-help',className:'pin-help',textContent:'Нажми на название контакта в инструкции — он подсветится на схеме.'});
+pinHelp.setAttribute('role','status');board.before(pinHelp);
 let selectedWire=null;
 const wireTools=make('div',{className:'wire-tools',hidden:true});
 wireTools.setAttribute('role','group');wireTools.setAttribute('aria-label','Выбранный провод');
@@ -137,23 +143,25 @@ const partSpecs=[
  {id:'sensor',tag:'div',label:'ДАТЧИК TMP36',x:520,y:285,w:116,h:92,scale:1,virtualPins:sensorPins},
 ];
 
-function displayPin(id){const [part,pin]=id.split(':');return part==='bb'?'Плата '+pin.toUpperCase():part==='uno'?(pin.startsWith('GND')?'GND':/^\d+$/.test(pin)?'D'+pin:pin):part==='r'?'Резистор '+pin:part==='led'?'LED '+pin:part==='button'?'Кнопка '+pin:part==='sensor'?'Датчик '+pin:pin;}
 function feedback(text,type=''){const el=$('feedback');el.textContent=text;el.className='feedback '+type;}
 function log(text){$('console').textContent=text;}
 function setLight(data){parts.get('led').element.value=data.led;parts.get('uno').element.led13=data.led13;badge.textContent='Светодиод: '+(data.led?'включён':'выключен');badge.classList.toggle('lit',data.led);}
 
 for(const spec of partSpecs){
- const part=make('div',{className:'part'});part.style.left=spec.x+'px';part.style.top=spec.y+'px';part.style.width=spec.w+'px';
- const title=make('span',{className:'part-title',textContent:spec.label});title.tabIndex=0;title.setAttribute('aria-label',spec.label+'. Перемещение: стрелки клавиатуры');
+ const part=make('div',{className:'part'});part.dataset.part=spec.id;part.style.left=spec.x+'px';part.style.top=spec.y+'px';part.style.width=spec.w+'px';
+ const title=make('span',{className:'part-title',textContent:componentNames[spec.id]});title.tabIndex=0;title.setAttribute('aria-label',componentNames[spec.id]+'. Перемещение: стрелки клавиатуры');
  const body=make('div',{className:'part-body'});body.style.width=spec.w+'px';body.style.height=spec.h+'px';
  const element=document.createElement(spec.tag);element.style.transform=`scale(${spec.scale})`;element.style.transformOrigin='top left';element.style.display='block';element.style.width='max-content';
- if(spec.id==='sensor'){element.className='virtual-sensor';element.innerHTML='<strong>TMP36</strong><span class="sensor-reading">25 °C</span><small>перетащи шкалу</small>';element.style.width='116px';element.style.height='92px';}
+ if(spec.id==='sensor'){element.className='virtual-sensor';element.innerHTML='<strong>TMP36</strong><span class="sensor-reading">25 °C</span><small>ползунок над схемой</small>';element.style.display='grid';element.style.width='116px';element.style.height='92px';}
  if(spec.id==='r')element.value='220';if(spec.id==='led')element.color='green';if(spec.id==='button'){element.color='green';element.addEventListener('button-press',()=>press(true));element.addEventListener('button-release',()=>press(false));}
  body.append(element);part.append(title,body);stage.append(part);parts.set(spec.id,{part,body,element,spec});
  for(const pin of (element.pinInfo||spec.virtualPins||[]).filter(p=>!spec.pins||spec.pins.includes(p.name))){
-   const id=spec.id+':'+pin.name,btn=make('button',{className:'pin',title:displayPin(id)});btn.setAttribute('aria-label','Контакт '+displayPin(id));btn.setAttribute('aria-pressed','false');
+   const id=spec.id+':'+pin.name,btn=make('button',{className:'pin',title:displayPin(id)+'. '+pinDescription(id)});btn.dataset.pin=id;btn.setAttribute('aria-label','Контакт '+displayPin(id));btn.setAttribute('aria-pressed','false');btn.setAttribute('aria-describedby','pin-help');
    btn.style.left=pin.x*spec.scale+'px';btn.style.top=pin.y*spec.scale+'px';
-   const label=make('span',{className:'pin-label',textContent:spec.id==='uno'?displayPin(id):pin.name});btn.append(label);btn.onclick=()=>pickPin(id);body.append(btn);pins.set(id,{btn,part:spec.id});
+   const label=make('span',{className:'pin-label',textContent:pinLabel(id)});btn.append(label);btn.onclick=()=>pickPin(id);body.append(btn);pins.set(id,{btn,part:spec.id});
+   if(spec.id==='button')btn.classList.add(pin.name.endsWith('.l')?'label-left':'label-right');
+   if(spec.id==='sensor')btn.classList.add(pin.name==='OUT'?'label-right':'label-left');
+   if(spec.id==='led')btn.classList.add(pin.name==='C'?'label-left':'label-right');
    if(spec.id==='sensor')btn.classList.add('sensor-pin');
    if(spec.id==='uno' && pin.y<100){btn.classList.add('top-pin');if(pin.name==='12'){btn.classList.add('second-row');btn.style.top='-22px';}}
    if(spec.id==='uno' && pin.name==='5V'){btn.classList.add('power-pin');btn.style.top='224px';}
@@ -161,12 +169,67 @@ for(const spec of partSpecs){
  }
  if(spec.id==='button'){const btn=make('button',{className:'press-button',textContent:'Удерживать кнопку'});part.append(btn);btn.onpointerdown=e=>{btn.setPointerCapture(e.pointerId);press(true);};btn.onpointerup=btn.onpointercancel=()=>press(false);btn.onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();press(true);}};btn.onkeyup=e=>{if(e.key===' '||e.key==='Enter')press(false);};btn.onblur=()=>press(false);}
  let drag=null;
- title.onpointerdown=e=>{drag={x:e.clientX,y:e.clientY,left:parseFloat(part.style.left),top:parseFloat(part.style.top)};title.setPointerCapture(e.pointerId);};
- title.onpointermove=e=>{if(!drag)return;part.style.left=Math.max(10,Math.min(630-spec.w,drag.left+e.clientX-drag.x))+'px';part.style.top=Math.max(32,Math.min(385-spec.h,drag.top+e.clientY-drag.y))+'px';drawWires();};
- title.onpointerup=title.onpointercancel=()=>drag=null;
- title.onkeydown=e=>{const v={ArrowUp:[0,-8],ArrowDown:[0,8],ArrowLeft:[-8,0],ArrowRight:[8,0]}[e.key];if(v){e.preventDefault();part.style.left=Math.max(10,Math.min(630-spec.w,parseFloat(part.style.left)+v[0]))+'px';part.style.top=Math.max(32,Math.min(385-spec.h,parseFloat(part.style.top)+v[1]))+'px';drawWires();}};
+ title.onpointerdown=e=>{if(e.button!==0)return;chooseWire(null);drag={x:e.clientX,y:e.clientY,left:parseFloat(part.style.left),top:parseFloat(part.style.top),bounds:partExtents(part)};title.setPointerCapture(e.pointerId);};
+ title.onpointermove=e=>{if(!drag)return;placePart(part,drag.left+e.clientX-drag.x,drag.top+e.clientY-drag.y,drag.bounds);drawWires();};
+ title.onpointerup=title.onpointercancel=()=>{drag=null;queueDraftSave();};
+ title.onkeydown=e=>{const v={ArrowUp:[0,-8],ArrowDown:[0,8],ArrowLeft:[-8,0],ArrowRight:[8,0]}[e.key];if(v){e.preventDefault();chooseWire(null);placePart(part,parseFloat(part.style.left)+v[0],parseFloat(part.style.top)+v[1]);drawWires();queueDraftSave();}};
 }
 
+function capturePositions(){return Object.fromEntries([...parts].map(([id,{part}])=>[id,{x:parseFloat(part.style.left),y:parseFloat(part.style.top)}]));}
+function partExtents(part){
+  const rect=part.getBoundingClientRect();let left=0,top=0,right=part.offsetWidth,bottom=part.offsetHeight;
+  for(const node of part.querySelectorAll('.part-title,.pin,.pin-label,.press-button,.part-body>:first-child')){
+    const box=node.getBoundingClientRect();if(!box.width||!box.height)continue;
+    left=Math.min(left,box.left-rect.left);top=Math.min(top,box.top-rect.top);right=Math.max(right,box.right-rect.left);bottom=Math.max(bottom,box.bottom-rect.top);
+  }
+  return {left,top,right,bottom};
+}
+function placePart(part,x,y,bounds=partExtents(part)){
+  if(board.clientWidth&&stage.clientHeight&&!part.hidden){
+    x=Math.max(12-bounds.left,Math.min(stage.clientWidth-12-bounds.right,x));
+    y=Math.max(12-bounds.top,Math.min(stage.clientHeight-12-bounds.bottom,y));
+  }
+  part.style.left=x+'px';part.style.top=y+'px';
+}
+function applyPositions(positions){
+  for(const [id,position] of Object.entries(positions||{})){
+    if(parts.has(id)&&Number.isFinite(position.x)&&Number.isFinite(position.y)){
+      const {part}=parts.get(id);part.style.left=position.x+'px';part.style.top=position.y+'px';
+    }
+  }
+}
+function arrangeParts(){
+  const width=stage.clientWidth||760;
+  const defaults={uno:{x:36,y:155},r:{x:Math.max(355,width*.46),y:68},led:{x:width-158,y:115},button:{x:Math.max(390,width*.52),y:325},sensor:{x:width-165,y:355}};
+  applyPositions(defaults);layoutWidth=width;layoutReady=board.clientWidth>0;chooseWire(null);
+  if(layoutReady)refreshCanvas();
+}
+function refreshCanvas(){
+  if(!board.clientWidth||!stage.clientHeight)return;
+  if(!layoutReady){arrangeParts();return;}
+  const width=stage.clientWidth;
+  for(const {part} of parts.values()){
+    const bounds=partExtents(part);let x=parseFloat(part.style.left);
+    if(layoutWidth&&width!==layoutWidth){
+      const min=12-bounds.left,oldRange=layoutWidth-12-bounds.right-min,newRange=width-12-bounds.right-min;
+      const fraction=oldRange>0?Math.max(0,Math.min(1,(x-min)/oldRange)):0;
+      x=min+fraction*Math.max(0,newRange);
+    }
+    placePart(part,x,parseFloat(part.style.top),bounds);
+  }
+  layoutWidth=width;drawWires();if(selectedWire)chooseWire(selectedWire);queueDraftSave();
+}
+function clearPinGuide(){for(const {btn} of pins.values())btn.classList.remove('guide-highlight');}
+function explainPin(id){pinHelp.replaceChildren(make('strong',{textContent:displayPin(id)}),make('span',{textContent:pinDescription(id)}));}
+document.querySelector('.lesson').addEventListener('click',event=>{
+  const reference=event.target.closest('[data-pin-ref]'),id=reference?.dataset.pinRef;
+  if(!pins.has(id))return;
+  chooseWire(null);selectPin(null);clearPinGuide();explainPin(id);
+  const pin=pins.get(id).btn;pin.classList.add('guide-highlight');pin.scrollIntoView({block:'nearest',inline:'nearest'});pin.focus({preventScroll:true});
+});
+
+const arrangeButton=make('button',{id:'arrange-parts',textContent:'Разложить детали',title:'Расположить детали по всему полю. Код и провода сохранятся.'});
+arrangeButton.onclick=arrangeParts;document.querySelector('.toolbar').append(arrangeButton);
 
 const bbToggle=make('button',{textContent:'＋ Макетная плата',className:'bb-toggle'});
 document.querySelector('.toolbar').append(bbToggle);
@@ -196,14 +259,14 @@ bbToggle.onclick=()=>{
   if(testRunning||busy)return;
   chooseWire(null);stop();breadboard=!breadboard;bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);
   if(!breadboard){wires=wires.filter(w=>!w.a.startsWith('bb:')&&!w.b.startsWith('bb:'));selectPin(null);}
-  bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';renderWires();
+  bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';refreshCanvas();renderWires();
   feedback(breadboard?'Попробуй соединить D13 с A1, а E1 — с резистором. Между A1 и E1 провод не нужен: они уже соединены внутри платы.':'Макетная плата убрана. Её провода удалены.');
 };
 
 for(const c of palette){const btn=make('button',{title:'Выбрать цвет провода'});btn.style.background=c;btn.setAttribute('aria-label','Цвет провода: '+({[palette[0]]:'красный',[palette[1]]:'чёрный',[palette[2]]:'синий',[palette[3]]:'зелёный',[palette[4]]:'жёлтый'}[c]));btn.classList.toggle('selected',color===c);btn.onclick=()=>{color=c;for(const child of $('colors').children)child.classList.toggle('selected',child===btn);};$('colors').append(btn);}
 
 function selectPin(id){selected=id;for(const [key,{btn}] of pins){btn.classList.toggle('selected',key===id);btn.setAttribute('aria-pressed',String(key===id));}}
-function pickPin(id){if(testRunning||busy)return;chooseWire(null);if(selected===id){selectPin(null);return;}if(!selected){selectPin(id);$('connect-help').textContent=`Выбран ${displayPin(id)}. Теперь нажми на контакт назначения. Esc — отмена.`;return;}addWire(selected,id);selectPin(null);}
+function pickPin(id){if(testRunning||busy)return;chooseWire(null);clearPinGuide();explainPin(id);if(selected===id){selectPin(null);return;}if(!selected){selectPin(id);$('connect-help').textContent=`Выбран ${displayPin(id)}. Теперь нажми на контакт назначения. Esc — отмена.`;return;}addWire(selected,id);selectPin(null);}
 function addWire(a,b){if(!pins.has(a)||!pins.has(b)||a===b||(!breadboard&&(a.startsWith('bb:')||b.startsWith('bb:'))))throw new Error('Выбери два разных доступных контакта');if(wires.some(w=>w.a===a&&w.b===b||w.a===b&&w.b===a)){feedback('Это соединение уже есть.');return;}stop();wires.push({a,b,color});renderWires();feedback(inspectCircuit(wires,false,breadboard).reason);}
 function wireLabel(w){return `${displayPin(w.a)} — ${displayPin(w.b)}`;}
 function chooseWire(w,x=board.scrollLeft+20,y=board.scrollTop+20){
@@ -223,6 +286,7 @@ function removeWire(w){
   feedback(`Удалён провод ${wireLabel(w)}. ${inspectCircuit(wires,false,breadboard).reason}`);
 }
 function drawWires(){
+  svg.setAttribute('width',String(stage.clientWidth));svg.setAttribute('height',String(stage.clientHeight));
   svg.replaceChildren();const rect=stage.getBoundingClientRect();
   for(const w of wires){
     const a=pins.get(w.a).btn.getBoundingClientRect(),b=pins.get(w.b).btn.getBoundingClientRect();
@@ -245,7 +309,8 @@ function renderWires(){
   wires.forEach(w=>{const li=make('li');const label=make('span',{textContent:wireLabel(w)});const remove=make('button',{textContent:'×',title:'Удалить провод'});remove.setAttribute('aria-label','Удалить '+wireLabel(w));remove.onclick=()=>removeWire(w);li.append(label,remove);$('wire-list').append(li);});
   $('connect-help').textContent='Для удаления нажми на провод на схеме, затем «Удалить провод». Контакты соединяются двумя нажатиями. Детали можно двигать за название.';queueDraftSave();
 }
-window.addEventListener('resize',()=>{chooseWire(null);drawWires();});
+window.addEventListener('resize',refreshCanvas);
+new ResizeObserver(refreshCanvas).observe(stage);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){selectPin(null);chooseWire(null);}if(e.key==='Delete'&&selectedWire&&!e.target.closest('input,textarea,[contenteditable="true"],.cm-editor')){e.preventDefault();removeWire(selectedWire);}});
 $('undo').onclick=()=>{if(testRunning||busy)return;stop();wires.pop();renderWires();feedback(inspectCircuit(wires,false,breadboard).reason);};
 $('reset').onclick=()=>{if(!window.confirm('Сбросить программу и провода текущего задания?'))return;loadMission(mission,{mode:workbenchMode,reset:true});};
@@ -260,7 +325,7 @@ function renderLesson(){
  document.querySelector('.goal p').textContent=observing?'Запусти программу, дождись двух серий и запиши наблюдение.':free?'Например, сделай мигание только при нажатой кнопке.':m.goal;
  $('check').textContent=observing?'Записать наблюдение':free?'Проверить цепь':completed.has(mission)?'✓ Пройдено · проверить ещё':'Проверить миссию';
  $('steps').replaceChildren();
- if(observing){$('lesson-content').innerHTML='<span class="step-counter">ОСМОТР УСТРОЙСТВА</span><h3>Сколько импульсов?</h3><p>Запусти исходную программу справа. Смотри на светодиод: посчитай вспышки до длинной паузы.</p><p>Для замера нужна цепь <b>D13 → резистор → LED A</b> и <b>LED C → GND</b>. Если она осталась с прошлого дела, пересобирать её не нужно.</p><p class="tip">Код пока только для чтения. Через несколько секунд нажми «Записать наблюдение». Мы измерим реальные переключения на твоей схеме.</p>'; }
+ if(observing){$('lesson-content').innerHTML='<span class="step-counter">ОСМОТР УСТРОЙСТВА</span><h3>Сколько импульсов?</h3><p>Запусти исходную программу справа. Смотри на светодиод: посчитай вспышки до длинной паузы.</p><p>Для замера нужны эти провода:</p>'+connectionMarkup(ledConnections)+'<p>Если цепь осталась с прошлого дела, пересобирать её не нужно.</p><p class="tip">Код пока только для чтения. Через несколько секунд нажми «Записать наблюдение». Мы измерим реальные переключения на твоей схеме.</p>'; }
  else if(free){$('lesson-content').innerHTML='<h3>Мастерская открыта</h3><p>Можно менять программу целиком. Доступны выводы <code>D13</code>, <code>D12</code>, <code>D2</code>, <code>5V</code> и <code>GND</code>.</p><p>Попробуй перенести светодиод на D12 и исправить программу. Или создай функцию, которая мигает три раза.</p><p class="tip">Поддерживаемые компоненты: один светодиод, резистор 220 Ом и кнопка. Функции объявляй перед местом вызова.</p>';}
  else {m.steps.forEach((s,i)=>{const b=make('button',{className:'step'+(i<=step?' active':''),title:`Шаг ${i+1}: ${s[0]}`});b.setAttribute('aria-label',b.title);b.onclick=()=>{step=i;renderLesson();};$('steps').append(b);});const [title,body,tip]=m.steps[step];$('lesson-content').innerHTML=`<span class="step-counter">ШАГ ${step+1} ИЗ ${m.steps.length}</span><h3>${title}</h3><p>${body}</p><p class="tip">${tip}</p>`;}
  $('prev').disabled=step===0||free||observing;$('next').disabled=free;$('next').textContent=observing?'Записать наблюдение':step===m.steps.length-1?'Проверить результат':'Дальше →';menu.value=String(mission);
@@ -281,7 +346,9 @@ function loadMission(index,options={}){
  if(index<FREE)setSource(workbenchMode==='observe'?missions[index].code:draft?.code??missions[index].code);
  else if(draft)setSource(draft.code);
  bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';
- selectPin(null);chooseWire(null);lastHex=null;lastSource='';setCodeEditable(workbenchMode!=='observe');renderLesson();renderWires();
+ if(draft?.positions&&Object.keys(draft.positions).length){applyPositions(draft.positions);layoutWidth=draft.canvasWidth||stage.clientWidth||760;layoutReady=true;}
+ else if(options.reset||!layoutReady)arrangeParts();
+ selectPin(null);chooseWire(null);clearPinGuide();lastHex=null;lastSource='';setCodeEditable(workbenchMode!=='observe');renderLesson();refreshCanvas();renderWires();
  feedback(draft?'Черновик восстановлен: код и соединения на месте. Нажми «Запустить», чтобы включить плату.':workbenchMode==='observe'?'Исходная программа готова к наблюдению. Проверь провода и нажми «Запустить».':'Начни с объяснения слева. Существующие соединения остаются на столе.');
  restoringDraft=false;queueDraftSave();
  window.dispatchEvent(new CustomEvent('nexora:mission-change',{detail:{mission:index,name:index<FREE?missions[index].name:'Свободная мастерская'}}));
@@ -412,17 +479,17 @@ async function checkMission(){
  stop();
  const code=currentCode().replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g,'');
  if(results.every(Boolean)&&/\bif\s*\(/.test(code)&&/\belse\b/.test(code)){complete();log('Проверено: отпущена → нажата → отпущена → нажата → отпущена.\nВсе пять состояний верны.');}
- else feedback(fault||'Проверь провод D2, две разные группы контактов кнопки и ветки if/else. Свет должен гореть только при нажатии.','error');
+ else feedback(fault||'Проверь провод от Arduino D2 к кнопке 1L, от кнопки 2L к Arduino GND и ветки if/else. Свет должен гореть только при нажатии.','error');
 }
 function complete(signal=null){completed.add(mission);saveWorkshop();renderLesson();feedback(`Миссия «${missions[mission].name}» выполнена! ${mission===0?'Ты собрал цепь и запустил первую программу.':mission===1?'Ты изменил поведение устройства с помощью переменной.':mission===2?'Твоя программа реагирует на вход и выбирает действие.':'Ты создал нужный сигнал с помощью '+missions[mission].short.toLowerCase()+'.'}`,'success');window.dispatchEvent(new CustomEvent('nexora:mission-complete',{detail:{mission,name:missions[mission].name,signal}}));}
 $('check').onclick=checkMission;
  $('download').onclick=()=>{const blob=new Blob([currentCode()],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=make('a',{href:url,download:'nexora-sketch.ino'});a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('about').onclick=()=>$('modal').showModal();$('close-modal').onclick=()=>$('modal').close();
 const restoredWorkshop=restoreWorkshop(readProgress().workshop,pins,FREE);drafts=restoredWorkshop.drafts;completed=restoredWorkshop.completed;
-initCodeEditor();loadMission(restoredWorkshop.activeIndex,{mode:restoredWorkshop.mode});savingReady=true;renderWires();Promise.all([...parts.values()].map(p=>p.element.updateComplete)).then(drawWires);
+initCodeEditor();loadMission(restoredWorkshop.activeIndex,{mode:restoredWorkshop.mode});savingReady=true;renderWires();Promise.all([...parts.values()].map(p=>p.element.updateComplete)).then(refreshCanvas);
 
 window.nexoraWorkshop={
-  open(index=0,options={}){loadMission(Math.max(0,Math.min(FREE,index)),options);document.body.classList.add('workbench-open');requestAnimationFrame(drawWires);document.getElementById('sim-main')?.scrollIntoView({block:'start'});},
+  open(index=0,options={}){document.body.classList.add('workbench-open');loadMission(Math.max(0,Math.min(FREE,index)),options);requestAnimationFrame(refreshCanvas);document.getElementById('sim-main')?.scrollIntoView({block:'start'});},
   close(){saveWorkshop();stop();document.body.classList.remove('workbench-open');},
   run,stop,check:checkMission,
   resetProgress(indices=null){
