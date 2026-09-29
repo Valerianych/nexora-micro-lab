@@ -203,8 +203,8 @@ body.workbench-open #sim-main{display:grid}
 .case-reveal.is-visible .case-reveal-stage{transform:translateY(0) scale(1)}
 .case-paper-stack{position:relative;min-height:390px}
 .case-paper{position:absolute;overflow:hidden;width:min(340px,82%);padding:20px 21px 24px;background:#f3f0e7;color:#243044;border:1px solid #d7d3c8;box-shadow:11px 13px 0 #07121d9e;transform-origin:center bottom}
-.case-paper-done{left:0;top:33px;transform:rotate(-5deg);animation:casePaperDone .55s ease both}
-.case-paper-next{right:0;top:0;transform:translateX(42px) rotate(6deg);animation:casePaperNext .72s .12s cubic-bezier(.2,.8,.25,1) both}
+.case-paper-done{left:0;top:33px;transform:rotate(-3deg);animation:casePaperDone .55s ease both}
+.case-paper-next{right:0;top:0;transform:rotate(3deg);animation:casePaperNext .72s .12s cubic-bezier(.2,.8,.25,1) both}
 .case-paper-top{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#5d6d7b;font:10px monospace;letter-spacing:1.4px}
 .case-paper-top b{padding:4px 7px;border:2px solid #d86b60;border-radius:50%;color:#c6564c;font:700 10px monospace;letter-spacing:.5px;transform:rotate(-8deg)}
 .case-paper-next .case-paper-top b{border-color:#91b64f;color:#5f8733;transform:rotate(8deg)}
@@ -225,10 +225,10 @@ body.workbench-open #sim-main{display:grid}
 .case-reveal-primary span{margin-left:7px;font-size:18px;vertical-align:-1px}
 .case-reveal-later{border-color:#526a80;background:#233a4e;color:#e7eff2;font-size:12px}
 body.case-reveal-open{overflow:hidden}
-@keyframes casePaperDone{from{opacity:0;transform:translate(-20px,13px) rotate(-8deg)}to{opacity:.68;transform:rotate(-5deg)}}
-@keyframes casePaperNext{from{opacity:0;transform:translateX(150px) rotate(15deg)}to{opacity:1;transform:translateX(42px) rotate(6deg)}}
+@keyframes casePaperDone{from{opacity:0;transform:translate(-20px,13px) rotate(-8deg)}to{opacity:.68;transform:rotate(-3deg)}}
+@keyframes casePaperNext{from{opacity:0;transform:translateX(150px) rotate(15deg)}to{opacity:1;transform:rotate(3deg)}}
 @media(max-width:760px){.case-reveal{padding:12px}.case-reveal-stage{grid-template-columns:1fr;gap:5px;max-height:calc(100vh - 24px);overflow:auto;padding:20px 18px 21px}.case-paper-stack{min-height:282px}.case-paper{width:70%;padding:16px 17px 19px}.case-paper-photo{height:62px;margin:12px -17px 13px}.case-paper h3{font-size:20px}.case-paper p{min-height:58px;font-size:13px}.case-paper-sign{margin-top:11px}.case-paper-done{left:0;top:24px}.case-paper-next{right:0;transform:translateX(16px) rotate(6deg)}.case-reveal-copy{padding:3px 2px 0}.case-reveal-copy h2{font-size:27px}.case-reveal-copy>p{font-size:14px}.case-reveal-actions{margin-top:18px}.case-reveal-primary{font-size:12px}}
-@media(prefers-reduced-motion:reduce){.case-reveal,.case-reveal-stage,.case-paper-done,.case-paper-next{transition:none;animation:none}.case-reveal.is-visible .case-reveal-stage{transform:none}.case-paper-done{opacity:.68}.case-paper-next{opacity:1;transform:translateX(42px) rotate(6deg)}}
+@media(prefers-reduced-motion:reduce){.case-reveal,.case-reveal-stage,.case-paper-done,.case-paper-next{transition:none;animation:none}.case-reveal.is-visible .case-reveal-stage{transform:none}.case-paper-done{opacity:.68}.case-paper-next{opacity:1;transform:rotate(3deg)}}
 
 /* Evidence and the loop lesson live inside the same comic page. */
 #save-status{max-width:220px;color:#667987;font:11px/1.4 system-ui,sans-serif}
@@ -271,7 +271,7 @@ body.quest-mode #mission-select{display:none}
 .scene .comic-intro-image img{width:100%;height:100%;object-fit:contain;object-position:center!important;filter:none}
 .mission-transition-image{overflow:hidden}.mission-transition-image img{object-fit:contain}
 @media(max-width:760px){.story-media-status{left:15px;right:15px;top:45px}.story-media-status button{display:block;margin:6px 0 0}.comic-intro-head{flex-wrap:wrap}.comic-intro-count{white-space:normal;font-size:10px}}
-@media(max-width:760px){#save-status{display:none}.signal-comparison{grid-template-columns:1fr}.loop-model{padding:14px}.loop-model-code{padding:12px}.loop-model-code code{font-size:12px}.loop-values{gap:10px}.trace-lights i{width:16px;height:16px}.comic-intro-caption .loop-model .trace-explanation{font-size:14px}.trace-controls button{flex:1 1 auto}.case-reveal .case-paper-next{--paper-travel:8px;transform:translateX(8px) rotate(3deg)}@keyframes casePaperNext{from{opacity:0;transform:translateX(55px) rotate(9deg)}to{opacity:1;transform:translateX(8px) rotate(3deg)}}}
+@media(max-width:760px){#save-status{display:none}.signal-comparison{grid-template-columns:1fr}.loop-model{padding:14px}.loop-model-code{padding:12px}.loop-model-code code{font-size:12px}.loop-values{gap:10px}.trace-lights i{width:16px;height:16px}.comic-intro-caption .loop-model .trace-explanation{font-size:14px}.trace-controls button{flex:1 1 auto}.case-reveal .case-paper-next{--paper-travel:0px;transform:rotate(3deg)}@keyframes casePaperNext{from{opacity:0;transform:translateX(55px) rotate(9deg)}to{opacity:1;transform:rotate(3deg)}}}
 
 /* Workbench controls stay readable on the light panel. */
 header,.code-panel{color:#22364b}
@@ -349,9 +349,15 @@ header,.code-panel{color:#22364b}
 .connection-instruction-row{display:flex;align-items:center;flex-wrap:wrap;gap:5px;line-height:1.4}
 #arrange-parts{font-size:12px;padding:7px 9px}
 /* Career arc: each action reveals its own panel in a decoded comic sheet. */
-.comic-sheet{position:relative;overflow:hidden;aspect-ratio:16/9}
-.comic-sheet>img{position:absolute!important;top:0!important;left:0!important;width:200%!important;height:200%!important;max-width:none!important;object-fit:fill!important;transform:none!important;object-position:center!important}
+.comic-sheet{position:relative;overflow:hidden;aspect-ratio:16/9;height:auto;min-height:0;max-height:none;align-self:center;box-sizing:content-box}
+/* Size the whole 2 × 2 sheet without the single-image height limits above. */
+.comic-sheet>img{position:absolute!important;top:0!important;left:0!important;width:200%!important;height:200%!important;min-height:0!important;max-width:none!important;max-height:none!important;object-fit:cover!important;transform:none!important;object-position:center!important}
 .comic-sheet.panel-1>img{left:-100%!important}.comic-sheet.panel-2>img{top:-100%!important}.comic-sheet.panel-3>img{left:-100%!important;top:-100%!important}
+/* Full-proportion folder photos determine the stack height, including on mobile. */
+.case-paper-stack{display:grid;align-items:start;min-width:0;padding:12px 12px 33px}
+.case-paper{position:relative;grid-area:1/1}
+.case-paper-next{justify-self:end}
+.case-reveal-stage{overflow-y:auto}
 .case-arc-heading{grid-column:1/-1;color:#c9f36b;font-size:16px;padding:16px 0 2px;margin:0}
 .independent-workbench #pin-help,.independent-workbench .lesson-nav,.independent-workbench #steps,.independent-workbench .code-panel details{display:none!important}
 .independent-workbench .intro{font-size:0}.independent-workbench .intro:after{content:'Самостоятельная работа. Схема и программа создаются с нуля.';font-size:15px}
