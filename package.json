@@ -7,7 +7,9 @@
     "start": "node serve.mjs",
     "check": "node verify-progress.mjs && node verify-media.mjs",
     "check:browser": "node verify-browser.mjs",
-    "check:workspace": "node verify-workspace.mjs"
+    "check:workspace": "node verify-workspace.mjs",
+    "check:career": "node verify-career.mjs",
+    "check:career-browser": "node verify-career-browser.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
@@ -21,7 +23,13 @@
     "@lezer/highlight": "^1.2.3",
     "@wokwi/elements": "^1.9.2",
     "avr8js": "^0.21.0",
-    "esbuild": "^0.25.0"
+    "buffer": "^6.0.3",
+    "esbuild": "^0.25.0",
+    "events": "^3.3.0",
+    "JSCPP": "^2.0.9",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
+    "util": "^0.12.5"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

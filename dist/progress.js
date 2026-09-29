@@ -2,7 +2,7 @@ import {CASE_MISSIONS, caseIds, modelComplete} from './case-stories.js';
 // Shared by the story and workbench. Each writer preserves the other section.
 export const PROGRESS_KEY = 'nexora-progress-v1';
 const rooms = ['briefing', 'workshop', 'server', 'roof'];
-const skills = ['circuit', 'variables', 'types', 'conditions', 'loops', 'arrays', 'functions'];
+const skills = ['circuit', 'variables', 'types', 'conditions', 'loops', 'arrays', 'functions','independent','esp32','pwm','i2c','camera'];
 const cases = caseIds;
 const flags = ['started', 'inspectedPanel', 'askedMaya', 'recordedJournal', 'inspectedResistor', 'tookResistor', 'inspectedServer', 'inspectedButton', 'final', 'introDone', 'traceComplete'];
 const integer = (v, min, max, fallback = min) => Number.isInteger(v) && v >= min && v <= max ? v : fallback;
@@ -57,7 +57,7 @@ export function restoreGame(raw) {
   game.traceStep = integer(raw.traceStep, 0, 14);
   game.observation = signalSnapshot(raw.observation);
   game.repairResult = signalSnapshot(raw.repairResult);
-  for (const [field, allowed] of Object.entries({skills, completedCases:cases, unlockedCases:cases, unlocked:rooms, completed:[0,1,2,3,4,5,6,7]})) game[field] = new Set(list(raw[field],allowed));
+  for (const [field, allowed] of Object.entries({skills, completedCases:cases, unlockedCases:cases, unlocked:rooms, completed:Object.values(CASE_MISSIONS).flat()})) game[field] = new Set(list(raw[field],allowed));
   game.unlockedCases.add('001');
   game.unlocked.add('briefing');
   for (const id of game.completedCases) { const next = cases[cases.indexOf(id)+1]; if (next) game.unlockedCases.add(next); }
@@ -67,7 +67,7 @@ export function restoreGame(raw) {
   game.journal = entries(raw.journal);
   game.reports = Object.fromEntries(cases.filter(id => Array.isArray(raw.reports?.[id])).map(id => [id,entries(raw.reports[id])]));
   game.view = raw.view === 'workbench' ? 'workbench' : 'story';
-  game.workbenchIndex = integer(raw.workbenchIndex, 0, 7);
+  game.workbenchIndex = integer(raw.workbenchIndex, 0, Math.max(...Object.values(CASE_MISSIONS).flat()));
   if (!CASE_MISSIONS[game.activeCase].includes(game.workbenchIndex)) { game.workbenchIndex=CASE_MISSIONS[game.activeCase][0]; game.view='story'; }
   game.workbenchMode = raw.workbenchMode === 'observe' && game.workbenchIndex === 3 ? 'observe' : 'repair';
   if (game.activeCase === '002' && game.final) { game.case2Stage = 5; game.case2Reached = 5; game.room = 'roof'; }
@@ -93,7 +93,7 @@ export function restoreWorkshop(raw, validPins, missionCount) {
   for (const [key, value] of Object.entries(raw?.drafts || {})) {
     if ((!/^\d+$/.test(key) && key !== '3-observe') || (key !== '3-observe' && Number(key) > missionCount) || !value || typeof value.code !== 'string') continue;
     drafts[key] = {
-      code:value.code.slice(0,100000), temperature:integer(value.temperature,0,80,25), step:integer(value.step,0,20), breadboard:value.breadboard === true,
+      independent:value.independent===true,code:value.code.slice(0,100000), temperature:integer(value.temperature,0,80,25), step:integer(value.step,0,20), breadboard:value.breadboard === true,
       canvasWidth:integer(value.canvasWidth,1,10000),
       positions:Object.fromEntries(Object.entries(value.positions||{}).filter(([id,p])=>['uno','r','led','button','sensor'].includes(id)&&p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<=10000&&p.y<=10000).map(([id,p])=>[id,{x:p.x,y:p.y}])),
       wires:Array.isArray(value.wires) ? value.wires.filter(w => w && validPins.has(w.a) && validPins.has(w.b) && w.a !== w.b && (value.breadboard || (!w.a.startsWith('bb:') && !w.b.startsWith('bb:')))).slice(0,100).map(w => ({a:w.a,b:w.b,color:/^#[0-9a-f]{6}$/i.test(w.color) ? w.color : '#e04f50'})) : [],

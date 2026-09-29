@@ -1,6 +1,7 @@
 import {connectionText,ledConnections,buttonConnections,sensorConnections} from './circuit-labels.js';
+import {careerCases} from './career-cases.js';
 // The six folders form one course. Mission numbers remain stable for saved drafts.
-export const CASE_MISSIONS = {'001':[0,1,2], '002':[3], '003':[4], '004':[5], '005':[6], '006':[7]};
+export const CASE_MISSIONS = {'001':[0,1,2], '002':[3], '003':[4], '004':[5], '005':[6], '006':[7],...Object.fromEntries(Object.entries(careerCases).map(([id,c])=>[id,[c.mission]]))};
 export const caseIds = Object.keys(CASE_MISSIONS);
 export const extraCases = {
   '003': {
@@ -42,7 +43,8 @@ export const extraCases = {
     lesson:{title:'Достаточно хотя бы одной причины.',text:'Проверь все четыре сочетания входов. Сравни && («И») и || («ИЛИ»). Выбери вариант, при котором тревогу запускает любая из двух причин.',voice:'«Не забудь обычный режим: при прохладном датчике и отпущенной кнопке свет должен быть выключен».'},
     repair:{title:'Собери единый аварийный протокол.',text:`Подключения светодиода: ${connectionText(ledConnections)}. Кнопка: ${connectionText(buttonConnections)}. Датчик: ${connectionText(sensorConnections)}. Замени логическую связку и восстанови последний элемент массива. Сохрани for и функцию blink.`,hint:'Нужны || и массив {100, 250, 500}. Отпущенная кнопка с INPUT_PULLUP даёт HIGH, поэтому нажатие проверяется как == LOW. Программа дочитывает начатую серию, затем снова проверяет входы.'},
     ending:{title:'Система выдержала все испытания.',text:'Отдельно проверены перегрев, ручная кнопка, оба события вместе и возврат к норме. Плата выдаёт правильную серию, когда это требуется. Все шесть дел закрыты.',voice:'«Ты прошла путь от первого провода до программы, которая читает входы, принимает решение и выполняет целый протокол».',report:'Проверены четыре сочетания входов и отключение после окончания серии. Аварийная последовательность 100, 250, 500 мс собрана из массива, цикла и функции.'}
-  }
+  },
+  ...careerCases,
 };
 
 export function modelComplete(id, seen, value, setting) {

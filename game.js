@@ -68,6 +68,11 @@ const inventoryIcons = {
 };
 
 const skillCatalog = [
+  {id:'independent',label:'Самостоятельный проект',detail:'собрать с нуля'},
+  {id:'esp32',label:'ESP32',detail:'GPIO и 3,3 В'},
+  {id:'pwm',label:'АЦП и ШИМ',detail:'измерять и управлять'},
+  {id:'i2c',label:'Шина I²C',detail:'опросить два датчика'},
+  {id:'camera',label:'Камера SPI',detail:'планировать съёмку'},
   { id: 'circuit', label: 'Сборка цепи', detail: 'соединять плату' },
   { id: 'variables', label: 'Переменные', detail: 'давать значениям имена' },
   { id: 'types', label: 'Типы данных', detail: 'int и bool' },
@@ -78,6 +83,7 @@ const skillCatalog = [
 ];
 
 const missionSkills = {
+  8:['independent'],9:['esp32'],10:['pwm'],11:['i2c'],12:['camera'],13:['independent','esp32','pwm','i2c','camera'],
   0: ['circuit'],
   1: ['variables', 'types'],
   2: ['conditions'],
@@ -99,7 +105,7 @@ const caseCatalog = [
     problem: 'Аварийный сигнал повторяется не то число раз и сбивает дежурную смену.',
     board: 'Arduino Uno', topics: ['циклы', 'повторение'], image: artSource('c2-dispatch-call', 'thumb'), playable: true,
   },
-  ...Object.entries(extraCases).map(([id,story])=>({id,title:story.title,problem:story.problem,board:'Arduino Uno',topics:story.topics,image:artSource(id==='005'?'scene-server':id==='006'?'c1-beacon-restored':'scene-workshop','thumb'),playable:true})),
+  ...Object.entries(extraCases).map(([id,story])=>({id,title:story.title,problem:story.problem,arc:story.arc||1,board:story.board||'Arduino Uno',topics:story.topics,sheet:Boolean(story.art),image:artSource(story.art||(id==='005'?'scene-server':id==='006'?'c1-beacon-restored':'scene-workshop'),'thumb'),playable:true})),
 ];
 
 function caseInfo(id = state.activeCase) {
@@ -148,6 +154,8 @@ const sceneArt = {
   c2repair: { src: artSource('c2-program-repair'), alt: 'Стажёр редактирует программу подключённого контроллера', position: 'center' },
   c2fixed: { src: artSource('c2-siren-fixed'), alt: 'Мая и стажёр принимают работающую сирену с зелёным индикатором', position: 'center' },
 };
+for(const [id,story] of Object.entries(extraCases)){if(story.art)for(let panel=0;panel<4;panel++)sceneArt[`${id}-frame-${panel}`]={src:artSource(story.art),panel,alt:[story.opening.title,story.evidence.title,story.repair.title,story.ending.title][panel]};}
+function sheetAttrs(image){return image.panel===undefined?'':` comic-sheet panel-${image.panel}`;}
 sceneArt.workshop.caption = 'КАДР 05 / МАСТЕРСКАЯ';
 sceneArt.server.caption = 'СЕРВЕРНАЯ / СИГНАЛ ДОШЁЛ';
 scene.classList.add('story-active');
@@ -288,7 +296,8 @@ function setText(id, text) {
 function renderSkills() {
   const learned = state.skills.size;
   setText('skill-progress', `${learned} / ${skillCatalog.length}`);
-  setText('player-level', `стажёр · уровень ${learned}`);
+  setText('player-level', state.completedCases.has('007')?`сотрудник · уровень ${learned}`:`стажёр · уровень ${learned}`);
+  $('skill-list').innerHTML=skillCatalog.map((skill,i)=>`<div class="skill-row" data-skill="${skill.id}"><i>${String(i+1).padStart(2,'0')}</i><span><b>${skill.label}</b><small>${skill.detail}</small></span><em>—</em></div>`).join('');
   document.querySelectorAll('.skill-row').forEach((row) => {
     const complete = state.skills.has(row.dataset.skill);
     row.classList.toggle('is-complete', complete);
@@ -308,6 +317,7 @@ function renderArchive() {
   if (!list) return;
   list.replaceChildren();
   caseCatalog.forEach((item, index) => {
+    if(index===0||item.id==='008'){const heading=document.createElement('h3');heading.className='case-arc-heading';heading.textContent=index===0?'АРКА I · Стажировка / Arduino':'АРКА II · Сотрудник отдела / ESP32';list.append(heading);}
     const unlocked = state.unlockedCases.has(item.id);
     const active = item.id === state.activeCase;
     const solved = state.completedCases.has(item.id);
@@ -323,7 +333,7 @@ function renderArchive() {
         : unlocked
           ? '<small class="case-card-lock">Сюжет и верстак готовятся</small>'
           : `<small class="case-card-lock">Станет доступно после Дела ${previous?.id || '001'}</small>`;
-    card.innerHTML = `<div class="case-card-image"><img src="${item.image}" alt="Иллюстрация дела «${item.title}»" loading="lazy" decoding="async"><span>${item.id}</span></div><div class="case-card-copy"><div class="case-card-status"><span>${status}</span>${solved ? '<b>✓</b>' : ''}</div><h3>${item.title}</h3><p>${item.problem}</p><div class="case-card-meta"><span>${item.board}</span><span>${item.topics.join(' · ')}</span></div>${action}</div>`;
+    card.innerHTML = `<div class="case-card-image${item.sheet?' comic-sheet panel-0':''}"><img src="${item.image}" alt="Иллюстрация дела «${item.title}»" loading="lazy" decoding="async"><span>${item.id}</span></div><div class="case-card-copy"><div class="case-card-status"><span>${status}</span>${solved ? '<b>✓</b>' : ''}</div><h3>${item.title}</h3><p>${item.problem}</p><div class="case-card-meta"><span>${item.board}</span><span>${item.topics.join(' · ')}</span></div>${action}</div>`;
     list.append(card);
     const button = card.querySelector('.case-card-action');
     if (button) button.onclick = () => {
@@ -439,7 +449,7 @@ function beginCase(id, {replay=false}={}) {
 }
 
 function casePaperMarkup(item, kind, stamp) {
-  return `<article class="case-paper ${kind}"><div class="case-paper-top"><span>CASE / ${item.id}</span><b>${stamp}</b></div><div class="case-paper-photo"><img src="${item.image}" alt="" width="1280" height="720" loading="eager" decoding="sync"></div><h3>${item.title}</h3><p>«${item.problem}»</p><div class="case-paper-sign">— Архив NEXORA</div></article>`;
+  return `<article class="case-paper ${kind}"><div class="case-paper-top"><span>CASE / ${item.id}</span><b>${stamp}</b></div><div class="case-paper-photo${item.sheet?' comic-sheet panel-0':''}"><img src="${item.image}" alt="" width="1280" height="720" loading="eager" decoding="sync"></div><h3>${item.title}</h3><p>«${item.problem}»</p><div class="case-paper-sign">— Архив NEXORA</div></article>`;
 }
 
 function showCaseReveal(currentId, nextId) {
@@ -454,7 +464,7 @@ function showCaseReveal(currentId, nextId) {
   reveal.setAttribute('role', 'dialog');
   reveal.setAttribute('aria-modal', 'true');
   reveal.setAttribute('aria-label', 'Новое дело в архиве');
-  reveal.innerHTML = `<div class="case-reveal-scrim"></div><section class="case-reveal-stage"><div class="case-paper-stack">${casePaperMarkup(current, 'case-paper-done', 'ЗАКРЫТО')}${casePaperMarkup(next, 'case-paper-next', 'НОВОЕ')}</div><div class="case-reveal-copy"><span class="eyebrow">ДЕЛО ${current.id} ЗАКРЫТО / АРХИВ ПОПОЛНЕН</span><h2>Появилось новое расследование.</h2><p>${canStart ? `Дело ${next.id}: ${next.problem} Следующий инструмент — ${next.topics.join(', ')}.` : `Следующая карточка уже появилась в архиве. Сюжет и отдельный верстак для неё откроются следующим обновлением.`}</p><div class="case-reveal-note"><b>Новый фокус</b><span>${next.topics.join(' · ')}</span></div><div class="case-reveal-actions"><button class="accent case-reveal-primary" type="button">${canStart ? `Открыть дело ${next.id}` : 'Открыть архив дел'} <span>→</span></button><button class="case-reveal-later" type="button">Остаться в архиве</button></div></div></section>`;
+  reveal.innerHTML = `<div class="case-reveal-scrim"></div><section class="case-reveal-stage"><div class="case-paper-stack">${casePaperMarkup(current, 'case-paper-done', 'ЗАКРЫТО')}${casePaperMarkup(next, 'case-paper-next', 'НОВОЕ')}</div><div class="case-reveal-copy"><span class="eyebrow">ДЕЛО ${current.id} ЗАКРЫТО / АРХИВ ПОПОЛНЕН</span><h2>${next.id==='008'?'Ты принята в отдел полевых систем.':'Появилось новое расследование.'}</h2><p>${canStart ? `Дело ${next.id}: ${next.problem} Следующий инструмент — ${next.topics.join(', ')}.` : `Следующая карточка уже появилась в архиве. Сюжет и отдельный верстак для неё откроются следующим обновлением.`}</p><div class="case-reveal-note"><b>Новый фокус</b><span>${next.topics.join(' · ')}</span></div><div class="case-reveal-actions"><button class="accent case-reveal-primary" type="button">${canStart ? `Открыть дело ${next.id}` : 'Открыть архив дел'} <span>→</span></button><button class="case-reveal-later" type="button">Остаться в архиве</button></div></div></section>`;
   document.body.append(reveal);
   document.body.classList.add('case-reveal-open');
   const close = () => dismissCaseReveal();
@@ -612,7 +622,7 @@ function renderStoryBeat({ room, location, status, frame, kicker, title, text, a
   comicIntro.hidden = false;
   comicIntro.className = 'comic-intro story-card';
   storyAction = action;
-  comicIntro.innerHTML = `<div class="comic-intro-head"><div><span class="comic-intro-kicker">${kicker}</span><h2>Следующий шаг дела</h2></div><span class="comic-intro-count">${caption || image.caption || 'NEXORA'}</span></div><div class="comic-intro-grid"><article class="comic-intro-panel story-beat-panel is-new" data-index="0"><div class="comic-intro-image"><img src="${image.src}" alt="${image.alt}" width="1280" height="720" loading="eager" decoding="sync" style="object-position:${image.position || 'center'}"><span class="comic-intro-number">●</span></div><div class="comic-intro-caption"><span class="comic-intro-panel-kicker">${kicker}</span><h3>${title}</h3><p>${text}</p>${voice ? `<blockquote class="comic-voice">${voice}</blockquote>` : ''}${extra}<button class="accent comic-intro-action" data-story-action="advance">${actionLabel}</button></div></article></div>`;
+  comicIntro.innerHTML = `<div class="comic-intro-head"><div><span class="comic-intro-kicker">${kicker}</span><h2>Следующий шаг дела</h2></div><span class="comic-intro-count">${caption || image.caption || 'NEXORA'}</span></div><div class="comic-intro-grid"><article class="comic-intro-panel story-beat-panel is-new" data-index="0"><div class="comic-intro-image${sheetAttrs(image)}"><img src="${image.src}" alt="${image.alt}" width="1280" height="720" loading="eager" decoding="sync" style="object-position:${image.position || 'center'}"><span class="comic-intro-number">●</span></div><div class="comic-intro-caption"><span class="comic-intro-panel-kicker">${kicker}</span><h3>${title}</h3><p>${text}</p>${voice ? `<blockquote class="comic-voice">${voice}</blockquote>` : ''}${extra}<button class="accent comic-intro-action" data-story-action="advance">${actionLabel}</button></div></article></div>`;
   onReady?.();
   });
 }
@@ -795,11 +805,12 @@ function setExtraStage(stage){
 }
 function renderExtraCase(){
   const id=state.activeCase,story=extraCases[id],stage=state.caseStage;
-  const common={room:state.room,location:`${story.location} · ДЕЛО ${id}`,caption:`РАССЛЕДОВАНИЕ / ${stage+1} ИЗ 5`};
+  const common={room:state.room,location:`${story.location} · ДЕЛО ${id}`,caption:story.arc?`ДЕЛО ${id} / ${[0,1,3,4].indexOf(stage)+1} ИЗ 4`:`РАССЛЕДОВАНИЕ / ${stage+1} ИЗ 5`};
   if(stage===0)return renderStoryBeat({...common,frame:story.frames[0],status:'НОВАЯ ЖАЛОБА',kicker:`ДЕЛО ${id} / ВХОДЯЩИЙ СИГНАЛ`,title:story.opening.title,text:story.opening.text,voice:story.opening.voice,actionLabel:'Осмотреть устройство →',action:()=>setExtraStage(1)});
-  if(stage===1)return renderStoryBeat({...common,frame:story.frames[1],status:'УЛИКА НАЙДЕНА',kicker:`ДЕЛО ${id} / ИЗМЕРЕНИЕ`,title:story.evidence.title,text:story.evidence.text,voice:`«${story.evidence.detail}»`,extra:`<div class="signal-comparison">${story.evidence.values.map((value,i)=>`<div class="evidence-strip${i===story.evidence.values.length-1?' is-good':''}"><b>ФАКТ ${i+1}</b><small>${value}</small></div>`).join('')}</div>`,actionLabel:'Разобрать улику →',action:()=>setExtraStage(2)});
+  if(stage===1)return renderStoryBeat({...common,frame:story.frames[1],status:'УЛИКА НАЙДЕНА',kicker:`ДЕЛО ${id} / ИЗМЕРЕНИЕ`,title:story.evidence.title,text:story.evidence.text,voice:`«${story.evidence.detail}»`,extra:`<div class="signal-comparison">${story.evidence.values.map((value,i)=>`<div class="evidence-strip${i===story.evidence.values.length-1?' is-good':''}"><b>ФАКТ ${i+1}</b><small>${value}</small></div>`).join('')}</div>`,actionLabel:story.arc?'Принять задание →':'Разобрать улику →',action:()=>setExtraStage(story.arc?3:2)});
+  if(stage===2&&story.arc){setExtraStage(3);return;}
   if(stage===2)return renderStoryBeat({...common,frame:story.frames[2],status:'ГИПОТЕЗА',kicker:`ДЕЛО ${id} / ОБУЧАЮЩИЙ РАЗБОР`,title:story.lesson.title,text:story.lesson.text,voice:story.lesson.voice,extra:modelMarkup(),actionLabel:state.modelDone?'Открыть верстак ремонта →':'Сначала пройти микропроверку',action:()=>{if(state.modelDone)setExtraStage(3);},onReady:()=>bindModel(id,state,queueSave)});
-  if(stage===3)return renderStoryBeat({...common,frame:story.frames[3],status:'ПРОВЕРЯЕМ ГИПОТЕЗУ',kicker:`ДЕЛО ${id} / РЕМОНТ`,title:story.repair.title,text:story.repair.text,voice:`«${story.repair.hint}»`,extra:`<details class="repair-hint"><summary>Подсказка по ремонту</summary><p>${story.repair.hint}</p></details>`,actionLabel:'Открыть верстак →',action:()=>openWorkbench(story.mission)});
+  if(stage===3)return renderStoryBeat({...common,frame:story.frames[3],status:'ПРОВЕРЯЕМ ГИПОТЕЗУ',kicker:`ДЕЛО ${id} / РЕМОНТ`,title:story.repair.title,text:story.repair.text,voice:`«${story.repair.hint}»`,extra:story.arc?'':`<details class="repair-hint"><summary>Подсказка по ремонту</summary><p>${story.repair.hint}</p></details>`,actionLabel:'Открыть верстак →',action:()=>openWorkbench(story.mission)});
   return renderStoryBeat({...common,frame:story.frames[4],status:'ДЕЛО ЗАКРЫТО',kicker:`ДЕЛО ${id} / ОТЧЁТ ПРИНЯТ`,title:story.ending.title,text:story.ending.text,voice:story.ending.voice,extra:renderSkillSummary(),actionLabel:'Закрыть папку и открыть архив →',action:completeCurrentCase});
 }
 
@@ -856,7 +867,7 @@ function openWorkbench(index, options = {mode:'repair'}) {
   const objectives = ['Собери первую цепь и верни сигнал', 'Настрой ритм пакетов через переменную', 'Сделай маяк реагирующим на кнопку', options.mode === 'observe' ? 'Запусти исходную программу и запиши две серии' : 'Верни третью вспышку и проверь две серии', 'Собери список световых сигналов', 'Вынеси повторяющееся действие в функцию','Подключи датчик и настрой включение при 35 °C','Проверь перегрев и кнопку как независимые причины тревоги'];
   const activeWorkshop = window.nexoraWorkshop;
   if (activeWorkshop && typeof activeWorkshop.open === 'function') {
-    setText('workbench-objective', objectives[index] || 'Выполни задание');
+    setText('workbench-objective', objectives[index] || extraCases[state.activeCase]?.repair.title || 'Выполни задание');
     activeWorkshop.open(index, options);
     return;
   }
@@ -873,7 +884,7 @@ function openWorkbench(index, options = {mode:'repair'}) {
     if (ready && typeof ready.open === 'function') {
       window.clearInterval(workbenchWaitTimer);
       workbenchWaitTimer = null;
-      setText('workbench-objective', objectives[index] || 'Выполни задание');
+      setText('workbench-objective', objectives[index] || extraCases[state.activeCase]?.repair.title || 'Выполни задание');
       ready.open(index, options);
       return;
     }
@@ -931,7 +942,7 @@ function showMissionTransition(mission, name) {
   transition.setAttribute('aria-label', 'Результат миссии');
   const unlockedSkills = (missionSkills[mission] || []).map((id) => skillCatalog.find((skill) => skill.id === id)?.label).filter(Boolean);
   const skillLine = unlockedSkills.length ? `<div class="mission-transition-skills"><span>Новый инструмент дела</span><b>${unlockedSkills.join(' · ')}</b></div>` : '';
-  transition.innerHTML = `<section class="mission-transition-card"><div class="mission-transition-image"><img src="${image.src}" alt="${image.alt}" width="1280" height="720" loading="eager" decoding="sync"><span class="mission-transition-stamp">✓</span></div><div class="mission-transition-copy"><span class="comic-intro-kicker">${result.kicker}</span><span class="mission-transition-name">${name}</span><h2>${result.title}</h2><p>${result.text}</p><blockquote>${result.voice}</blockquote>${skillLine}<button class="accent mission-transition-action">Продолжить дело <span>→</span></button><small class="mission-transition-hint">Enter / пробел</small></div></section>`;
+  transition.innerHTML = `<section class="mission-transition-card"><div class="mission-transition-image${sheetAttrs(image)}"><img src="${image.src}" alt="${image.alt}" width="1280" height="720" loading="eager" decoding="sync"><span class="mission-transition-stamp">✓</span></div><div class="mission-transition-copy"><span class="comic-intro-kicker">${result.kicker}</span><span class="mission-transition-name">${name}</span><h2>${result.title}</h2><p>${result.text}</p><blockquote>${result.voice}</blockquote>${skillLine}<button class="accent mission-transition-action">Продолжить дело <span>→</span></button><small class="mission-transition-hint">Enter / пробел</small></div></section>`;
   document.body.append(transition);
   const continueButton = transition.querySelector('.mission-transition-action');
   const close = () => {

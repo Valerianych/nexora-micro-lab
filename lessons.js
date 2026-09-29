@@ -1,4 +1,5 @@
 import {pinReference as pin,connectionMarkup as connect,ledConnections,buttonConnections,sensorConnections} from './circuit-labels.js';
+import {capstoneMission} from './career-cases.js';
 export const missions=[
  {name:'Первая цепь',short:'Светодиод',goal:'Светодиод включается и выключается каждые полсекунды.',code:`// Контакт, к которому подключён светодиод
 int ledPin = 13;
@@ -178,3 +179,5 @@ void loop() {
  ['Прими систему','Запусти код, проверь ползунок и кнопку, затем запусти проверку. Она испытает четыре сочетания входов и завершение тревоги.','В этой программе delay блокирует чтение входов до конца серии. После остывания и отпускания кнопки текущая серия закончится, следующая уже не начнётся.']
  ]}
 );
+
+missions.push(capstoneMission);

@@ -29,7 +29,7 @@ async function run(seconds=0){await page.locator('#run').click();await page.wait
 async function checkFailure(){await page.locator('#check').click();await page.waitForFunction(()=>document.querySelector('#feedback').classList.contains('error'),null,{timeout:90000});assert.equal(await page.locator('.mission-transition').count(),0);}
 async function checkSuccess(){await page.locator('#check').click();await page.locator('.mission-transition-action').waitFor({timeout:150000});await page.locator('.mission-transition-action').click();await page.locator('.mission-transition').waitFor({state:'detached'});}
 async function enterWorkbench(){await action().filter({hasText:'Перейти к ремонту'}).click();await action().filter({hasText:'Открыть верстак'}).click();await page.locator('.cm-content').waitFor();}
-async function closeFolder(id){await action().filter({hasText:'Закрыть папку'}).click();if(id!=='006'){await page.locator('.case-reveal-primary').click();}else await page.locator('#archive-modal[open]').waitFor();}
+async function closeFolder(id){await action().filter({hasText:'Закрыть папку'}).click();if(id!=='006'){await page.locator('.case-reveal-primary').click();}else {await page.locator('.case-reveal-later').click();await page.locator('#archive-modal[open]').waitFor();}}
 async function contrast(){
   const results=await page.evaluate(()=>{
     function rgb(text){return [...text.matchAll(/[\d.]+/g)].map(x=>Number(x[0]));}

@@ -5,3 +5,6 @@ node_modules/
 .env.*
 *.zip
 *.tar.gz
+
+# Compiler binaries are reproducibly copied from npm by build.mjs.
+dist/avr/
