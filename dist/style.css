@@ -400,3 +400,72 @@ header,.code-panel{color:#22364b}
 /* The legacy simulator's generic main/header grid must not constrain this panel. */
 #esp-workbench{display:block;width:100%;max-width:none;margin:0}
 #esp-workbench .esp-backbar{height:auto;min-height:0;background:transparent;box-shadow:none;border:0;padding:0;position:static;max-width:none}
+
+/* ESP32 верстак — часть тёмной визуальной новеллы NEXORA.
+   Раньше этот блок получил отдельную светлую палитру и выбивался из сюжета. */
+#esp-workbench{
+  color-scheme:dark;
+  color:#e8f1f5;
+  background:
+    radial-gradient(circle at 78% 4%,#29495b55 0,transparent 30%),
+    linear-gradient(145deg,#152638 0%,#0d1927 58%,#09131f 100%);
+}
+#esp-workbench button{color:#e6f0f4;background:#21384b;border-color:#516b7c}
+#esp-workbench button:hover{background:#2b485d}
+#esp-workbench button:disabled{color:#8094a3;background:#182838;border-color:#344b5e}
+#esp-workbench button.accent{color:#17300b;background:#c8f36b;border-color:#96c247}
+#esp-workbench button.accent:hover{background:#b9ec50}
+#esp-workbench .esp-backbar small{color:#9fb5c2}
+#esp-workbench .esp-model-label{color:#b9cbd4}
+#esp-workbench .esp-task,
+#esp-workbench .esp-code-panel{
+  color:#e6eef2;
+  background:#142536;
+  border-color:#385367;
+  box-shadow:0 12px 30px #02091455;
+}
+#esp-workbench .esp-task h1,
+#esp-workbench .esp-code-panel h2,
+#esp-workbench .esp-circuit h2{color:#f3f8fa}
+#esp-workbench .esp-task p,
+#esp-workbench .esp-task li,
+#esp-workbench .esp-code-panel p{color:#bfd0d8}
+#esp-workbench .esp-task .eyebrow{color:#c8f36b}
+#esp-workbench .esp-requirements{border-color:#3e596a}
+#esp-workbench .esp-requirements>b{color:#eaf4f5}
+#esp-workbench .esp-independent-note{border-color:#c8f36b;color:#d4e3e7}
+#esp-workbench .esp-model-note{color:#9eb2bf}
+#esp-workbench .esp-reference{background:#182d3e;border-color:#466276;color:#d7e4e8}
+#esp-workbench .esp-reference summary,
+#esp-workbench .esp-reference h4{color:#eaf4f5}
+#esp-workbench .esp-reference p,
+#esp-workbench .esp-reference dd{color:#b9cbd3}
+#esp-workbench .esp-reference dt{color:#d9f08b}
+#esp-workbench .esp-circuit{background:#142b3c;color:#e6eef5;box-shadow:0 12px 30px #02091455}
+#esp-workbench .esp-pin-help{color:#bcd0dc}
+#esp-workbench #esp-board{background:#0d1b29;border-color:#486477;color:#e4eff2}
+#esp-workbench #esp-stage{background-image:radial-gradient(#54718488 .9px,transparent .9px)}
+#esp-workbench .esp-part{background:#1d3446;border-color:#5a7485;box-shadow:0 5px 14px #02091488;color:#e8f1f4}
+#esp-workbench .esp-part-esp{background:#193145}
+#esp-workbench .esp-part-handle{color:#e7f0f3;background:#29465a;border-bottom:1px solid #527086}
+#esp-workbench .esp-component-icon{color:#9ebdce}
+#esp-workbench .esp-part-value{color:#d1e88a}
+#esp-workbench .esp-pin i{border-color:#d6e7ec;background:#28495d;box-shadow:0 0 0 1px #7591a2}
+#esp-workbench .esp-pin span{background:#102432ee;color:#e8f3f5;border:1px solid #4b697b}
+#esp-workbench .esp-wire.is-selected>path:last-child,
+#esp-workbench .esp-wire:focus>path:last-child{filter:drop-shadow(0 0 3px #8bc5e8)}
+#esp-workbench .esp-inputs{color:#c7d8df}
+#esp-workbench .esp-inputs output{color:#d4f78f}
+#esp-workbench .esp-telemetry{border-color:#38576a;color:#c9d9e0}
+#esp-workbench .esp-telemetry>span:last-child{color:#d4f78f}
+#esp-workbench .esp-code-panel p{color:#b6c9d3}
+#esp-workbench .esp-code-head small{color:#9fb5c2}
+#esp-workbench .esp-code-panel h3{color:#c8f36b}
+#esp-workbench .esp-message{background:#102534;border-color:#46677b;color:#d9e8ed}
+#esp-workbench .esp-message.error{background:#3b2730;border-color:#b9797b;color:#ffd8d1}
+#esp-workbench .esp-message.success{background:#213c2b;border-color:#6d9f69;color:#e2f7c8}
+#esp-workbench .esp-survey{border-color:#38576a}
+#esp-workbench .esp-survey-head h3{color:#eff7f8}
+#esp-workbench .esp-survey-head span,
+#esp-workbench .esp-survey p,
+#esp-workbench #esp-photos figcaption{color:#bfd3dc}
