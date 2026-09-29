@@ -42,8 +42,10 @@ body.workbench-open #sim-main{display:grid}
 .scene-page-turn.turning{animation:scenePageTurn .52s cubic-bezier(.2,.72,.24,1) both}
 @keyframes scenePageTurn{0%{opacity:0;transform:translateX(-72%) skewX(-12deg)}18%{opacity:.82}100%{opacity:0;transform:translateX(72%) skewX(-12deg)}}
 .scene[data-beat="journal"] .scene-art-frame:before,.scene[data-beat="taken"] .scene-art-frame:before,.scene[data-beat="restored"] .scene-art-frame:before{content:'';position:absolute;z-index:2;left:0;right:0;bottom:0;height:28%;background:linear-gradient(0deg,#101a28e8,transparent);pointer-events:none}
-.code-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;margin:11px 0 8px}
+.code-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;margin:11px 0 8px;flex-wrap:wrap}
 .code-toolbar button{font-size:12px;padding:7px 9px;background:#eef4f8;border-color:#cbd7e2;color:#344960;white-space:nowrap}
+#scaffold-button{border-color:#9ebd72;background:#f0f7e7;color:#365522}
+#scaffold-button:hover{border-color:#7e9f52;background:#e5f0d8}
 .code-legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font:12px Consolas,monospace;color:#8290a1}
 .code-legend i{font-style:normal;padding:2px 5px;border-radius:4px;background:#f2f5f8}
 .legend-keyword{color:#a543a7}.legend-function{color:#995200}.legend-value{color:#b5481e}.legend-comment{color:#628062}

@@ -5,6 +5,7 @@ import '@wokwi/elements/dist/esm/pushbutton-element.js';
 import {Emulator,inspectCircuit,inspectSensor} from './engine.js';
 import {openEspWorkshop,closeEspWorkshop,resetEspProgress,isEspOpen,getEspState,runEsp,stopEsp,checkEspWorkbench} from './esp-workbench.js';
 import {missions} from './lessons.js';
+import {capstoneScaffold} from './career-cases.js';
 import {componentNames,pinLabel,displayPin,pinDescription,connectionMarkup,ledConnections} from './circuit-labels.js';
 import {readProgress, writeProgress, restoreWorkshop, clearWorkshop} from './progress.js';
 import {analyzeSiren} from './case-two.js';
@@ -55,6 +56,15 @@ wireCancel.onclick=()=>chooseWire(null);
 board.addEventListener('click',event=>{if(!event.target.closest('.wire-tools,.wire-group'))chooseWire(null);});
 const codeField=$('code'),codeMount=$('code-editor'),codeEditable=new Compartment();
 let codeView=null,compileDiags=[];
+const scaffoldButton=make('button',{id:'scaffold-button',type:'button',textContent:'Вставить учебный каркас'});
+scaffoldButton.hidden=true;
+document.querySelector('.code-toolbar')?.append(scaffoldButton);
+scaffoldButton.onclick=()=>{
+  if(currentCode().trim() && currentCode().trim()!==`void setup() {\n\n}\n\nvoid loop() {\n\n}` && !window.confirm('Заменить текущий код учебным каркасом?'))return;
+  setSource(capstoneScaffold);
+  queueDraftSave();
+  feedback('Каркас вставлен. Заполни TODO по порядку, затем запусти программу.','success');
+};
 
 const arduinoHighlight=HighlightStyle.define([
   {tag:tags.comment,color:'#a2b59c',fontStyle:'italic'},
@@ -331,9 +341,11 @@ function renderLesson(){
  $('steps').replaceChildren();
  if(observing){$('lesson-content').innerHTML='<span class="step-counter">ОСМОТР УСТРОЙСТВА</span><h3>Сколько импульсов?</h3><p>Запусти исходную программу справа. Смотри на светодиод: посчитай вспышки до длинной паузы.</p><p>Для замера нужны эти провода:</p>'+connectionMarkup(ledConnections)+'<p>Если цепь осталась с прошлого дела, пересобирать её не нужно.</p><p class="tip">Код пока только для чтения. Через несколько секунд нажми «Записать наблюдение». Мы измерим реальные переключения на твоей схеме.</p>'; }
  else if(free){$('lesson-content').innerHTML='<h3>Мастерская открыта</h3><p>Можно менять программу целиком. Доступны выводы <code>D13</code>, <code>D12</code>, <code>D2</code>, <code>5V</code> и <code>GND</code>.</p><p>Попробуй перенести светодиод на D12 и исправить программу. Или создай функцию, которая мигает три раза.</p><p class="tip">Поддерживаемые компоненты: один светодиод, резистор 220 Ом и кнопка. Функции объявляй перед местом вызова.</p>';}
+ else if(missions[mission]?.independent){$('lesson-content').innerHTML='<span class="step-counter">САМОСТОЯТЕЛЬНАЯ СБОРКА</span><h3>Раздели задачу на семь маленьких шагов</h3><p>Сначала объяви контакты и массив. Затем напиши <code>blink(int duration)</code>, настрой входы в <code>setup()</code>, переведи TMP36 в температуру и собери условие <code>перегрев || кнопка</code>.</p><p>Внутри тревоги цикл должен пройти по <code>durations[i]</code>. После заполнения одного пункта нажми «Запустить» и смотри на подсказку редактора.</p><p class="tip">Не обязательно помнить всё сразу: кнопка «Вставить учебный каркас» оставляет названия, формулу и TODO, а решение всё равно дописываешь ты.</p>';}
  else {m.steps.forEach((s,i)=>{const b=make('button',{className:'step'+(i<=step?' active':''),title:`Шаг ${i+1}: ${s[0]}`});b.setAttribute('aria-label',b.title);b.onclick=()=>{step=i;renderLesson();};$('steps').append(b);});const [title,body,tip]=m.steps[step];$('lesson-content').innerHTML=`<span class="step-counter">ШАГ ${step+1} ИЗ ${m.steps.length}</span><h3>${title}</h3><p>${body}</p><p class="tip">${tip}</p>`;}
  $('prev').disabled=step===0||free||observing;$('next').disabled=free;$('next').textContent=observing?'Записать наблюдение':step===m.steps.length-1?'Проверить результат':'Дальше →';menu.value=String(mission);
- const intro=document.querySelector('.code-intro');intro.textContent=observing?'Исходная программа · только чтение. Сначала измерь сигнал, затем вернись к расследованию.':'Редактор Arduino C++: подсветка синтаксиса, подсказки при вводе и указание ошибок.';
+ scaffoldButton.hidden=!(missions[mission]?.independent && workbenchMode!=='observe');
+ const intro=document.querySelector('.code-intro');intro.textContent=observing?'Исходная программа · только чтение. Сначала измерь сигнал, затем вернись к расследованию.':missions[mission]?.independent?'Пустой редактор — самостоятельный режим. Можно начать с нуля или вставить учебный каркас с TODO.':'Редактор Arduino C++: подсветка синтаксиса, подсказки при вводе и указание ошибок.';
  document.querySelector('.code-panel').classList.toggle('code-observing',observing);queueDraftSave();
 }
 function loadMission(index,options={}){
@@ -433,13 +445,24 @@ async function checkMission(){
      }
      const trials=[{value:25,pressed:false,alarm:false,label:'обычный режим'},...(checkingMission===8?[{value:34,pressed:false,alarm:false,label:'ниже порога'}]:[]),{value:35,pressed:false,alarm:true,label:'ровно 35 °C'},{value:40,pressed:false,alarm:true,label:'только перегрев'},{value:25,pressed:true,alarm:true,label:'только кнопка'},{value:40,pressed:true,alarm:true,label:'обе причины'}];
      const pattern=missions[checkingMission].pattern;
+     const matchesAlarmPattern=(intervals)=>intervals.length>=pattern.length*2&&intervals.every((duration,i)=>{
+       const target=pattern[i%pattern.length];
+       // If blink() adds the 150 ms dark pause after every flash, the final
+       // pause is 150 + 1150 ms. Accept that natural beginner implementation
+       // as well as the compact 1000 ms tail that totals 1150 ms.
+       const trailingOff=checkingMission===8&&i%pattern.length===pattern.length-1&&Math.abs(duration-(target+.15))<.04;
+       return Math.abs(duration-target)<.04||trailingOff;
+     });
      for(const [index,trial] of trials.entries()){
        feedback(`Испытание ${index+1} из ${trials.length}: ${trial.label}. Проверяю сигнал…`);
        const test=new Emulator(hex,snapshot,{breadboard,temperature:trial.value});test.setButton(trial.pressed);
        if(!await advance(test,checkingMission===8?104000000:80000000))return;
        const intervals=test.transitions.slice(1).map((item,i)=>item.time-test.transitions[i].time);
-       const correct=trial.alarm?intervals.length>=pattern.length*2&&intervals.every((duration,i)=>Math.abs(duration-pattern[i%pattern.length])<.04):test.transitions.length===0&&!test.led;
-       if(!correct)throw Error(`Не пройдено испытание «${trial.label}». ${trial.alarm?`Нужны повторяющиеся серии ${checkingMission===8?'150, 300, 600':'100, 250, 500'} мс с паузами 150 и 1150 мс.`:'Без перегрева и нажатия свет должен быть выключен.'}`);
+       const correct=trial.alarm?matchesAlarmPattern(intervals):test.transitions.length===0&&!test.led;
+       if(!correct){
+         if(checkingMission===8&&trial.value===35&&test.transitions.length===0)throw Error('На границе 35 °C сигнал не начался. Для TMP36 округли температуру: (voltage - 0.5) * 100 + 0.5, затем используй temperature >= 35.');
+         throw Error(`Не пройдено испытание «${trial.label}». ${trial.alarm?`Нужны повторяющиеся серии ${checkingMission===8?'150, 300, 600':'100, 250, 500'} мс с паузами 150 и 1150 мс.`:'Без перегрева и нажатия свет должен быть выключен.'}`);
+       }
        if(trial.alarm){
          feedback(`Испытание ${index+1}: убираю обе причины. Текущая серия должна закончиться, а новая не начаться…`);
          test.setTemperature(25);test.setButton(false);const normalAt=test.cpu.cycles/16000000;
