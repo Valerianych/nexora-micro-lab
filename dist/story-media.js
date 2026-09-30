@@ -61,5 +61,9 @@ export function createSceneGate(cache, {pending = () => {}, ready = () => {}, er
 // Desktop scenes, lighter mobile scenes and small archive thumbnails.
 export function artSource(name, kind = 'scene') {
   const small = kind === 'thumb' || globalThis.matchMedia?.('(max-width: 760px)').matches;
-  return `art/${name}-${kind === 'thumb' ? 360 : small ? 640 : 1280}.webp`;
+  const file = `art/${name}-${kind === 'thumb' ? 360 : small ? 640 : 1280}.webp`;
+  // Keep media inside the published app. Resolving from the site root also
+  // works when Vercel serves a clean URL without a trailing slash.
+  const base=globalThis.document?.baseURI;
+  return base ? new URL(file, new URL('./', base)).href : file;
 }

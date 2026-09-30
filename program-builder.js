@@ -3,8 +3,12 @@ const el=(tag,props={})=>Object.assign(document.createElement(tag),props);
 
 export function createProgramBuilder({mount,kind,saved,readCode,writeCode,onMode=()=>{},onChange=()=>{},beforeChange=()=>{}}){
   const def=blockPrograms[kind];let state=normalizeBlocks(kind,saved),disabled=false;
-  if(!saved&&readCode().replace(/\s/g,'')!=='voidsetup(){}voidloop(){}')state.mode='code';
-  if(state.mode==='code')state.manualCode=readCode();
+  // Drafts from the version before the block builder do not have `program`.
+  // Open those finals in the teaching flow, while keeping their old C++ in the
+  // separate code tab so an existing learner never loses work.
+  const hasBuilderDraft=saved?.version===1&&saved?.kind===kind;
+  if(!hasBuilderDraft){state.mode='blocks';state.manualCode=readCode();}
+  else if(state.mode==='code')state.manualCode=readCode();
   const root=el('div',{className:'program-builder'});mount.append(root);
   const tabs=el('div',{className:'builder-tabs',role:'group',ariaLabel:'Способ сборки программы'});
   const blocksTab=el('button',{type:'button',textContent:'Собрать блоками'}),codeTab=el('button',{type:'button',textContent:'C++'});
