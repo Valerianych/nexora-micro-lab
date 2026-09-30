@@ -21,6 +21,7 @@ await build({entryPoints:['esp-worker.js'],bundle:true,alias:{stream:'stream-bro
 await cp('career-cases.js','dist/career-cases.js');
 await cp('game.js','dist/game.js');
 await cp('progress.js','dist/progress.js');
+await cp('program-blocks.js','dist/program-blocks.js');
 await cp('case-two.js','dist/case-two.js');
 await cp('story-media.js','dist/story-media.js');
 await cp('case-stories.js','dist/case-stories.js');

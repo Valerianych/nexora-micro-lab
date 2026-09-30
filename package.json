@@ -9,7 +9,8 @@
     "check:browser": "node verify-browser.mjs",
     "check:workspace": "node verify-workspace.mjs",
     "check:career": "node verify-career.mjs",
-    "check:career-browser": "node verify-career-browser.mjs"
+    "check:career-browser": "node verify-career-browser.mjs",
+    "check:blocks": "node verify-program-blocks.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
