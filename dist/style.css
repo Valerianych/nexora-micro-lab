@@ -379,10 +379,10 @@ header,.code-panel{color:#22364b}
 #esp-board{position:relative;width:100%;height:690px;overflow:auto;background:#f6f9fc;border:1px solid #adc1d0;border-radius:8px;color:#172b40}
 #esp-stage{position:relative;min-width:1200px;width:100%;height:780px;background-image:radial-gradient(#bdcddd .9px,transparent .9px);background-size:20px 20px}
 #esp-wires{position:absolute;inset:0;width:100%;height:100%;z-index:3;pointer-events:none;overflow:visible}.esp-wire{pointer-events:stroke;cursor:pointer}.esp-wire.is-selected>path:last-child,.esp-wire:focus>path:last-child{stroke-width:6px;filter:drop-shadow(0 0 3px #1d5275)}
-.esp-part{position:absolute;border:1px solid #9baebf;border-radius:9px;background:#e6eef6;box-shadow:0 3px 8px #17395918}.esp-part-esp{background:#d6e4ef}.esp-part wokwi-esp32-devkit-v1{position:absolute;left:91px;top:106px;pointer-events:none}
-#esp-workbench .esp-part-handle{position:absolute;left:8px;top:8px;width:calc(100% - 16px);border:0;background:#d6e3ed;font-size:12px;padding:8px 4px;cursor:grab;touch-action:none;color:#19384b;z-index:4}
+.esp-part{position:absolute;border:0;border-radius:0;background:transparent;box-shadow:none;pointer-events:none}
+#esp-workbench .esp-part-handle{position:absolute;left:0;top:0;width:auto;max-width:100%;border:0;background:transparent;font-size:12px;padding:5px 0;cursor:grab;touch-action:none;color:#19384b;z-index:4;pointer-events:auto}
 .esp-component-icon{position:absolute;left:calc(50% - 18px);top:55px;font-size:36px;width:36px;text-align:center;color:#37648e;line-height:1}.esp-part-led.is-lit .esp-component-icon{color:#50b920;text-shadow:0 0 18px #74ff34}
-#esp-workbench .esp-pin{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;padding:0;border:0;border-radius:50%;z-index:5;background:transparent;overflow:visible;font-size:11px;line-height:16px}
+#esp-workbench .esp-pin{position:absolute;transform:translate(-50%,-50%);width:20px;height:20px;padding:0;border:0;border-radius:50%;z-index:5;background:transparent;overflow:visible;font-size:11px;line-height:16px;pointer-events:auto}
 .esp-pin i{display:block;width:18px;height:18px;border:3px solid #f9fcff;border-radius:50%;background:#244258;box-shadow:0 0 0 1px #677f94}.esp-pin span{position:absolute;top:0;white-space:nowrap;background:#f6f9fcee;color:#15334c;padding:1px 3px;border-radius:3px}.esp-pin.is-left span{left:22px}.esp-pin.is-right span{right:22px}.esp-pin.is-selected i{background:#568708;box-shadow:0 0 0 4px #c8f36b}
 .esp-part-value{position:absolute;bottom:8px;left:0;width:100%;text-align:center;font:11px monospace;color:#25425b;pointer-events:none}
 #esp-wire-tools{position:absolute;max-width:370px;width:max-content;padding:12px;border-radius:8px;background:#172c41;border:1px solid #7f9aad;color:#fff;z-index:8;box-shadow:0 5px 20px #0005}#esp-wire-tools b{display:block;max-width:330px;font-size:12px;line-height:1.5;margin-bottom:8px}#esp-wire-tools button{margin-right:6px}
@@ -445,13 +445,19 @@ header,.code-panel{color:#22364b}
 #esp-workbench .esp-pin-help{color:#bcd0dc}
 #esp-workbench #esp-board{background:#0d1b29;border-color:#486477;color:#e4eff2}
 #esp-workbench #esp-stage{background-image:radial-gradient(#54718488 .9px,transparent .9px)}
-#esp-workbench .esp-part{background:#1d3446;border-color:#5a7485;box-shadow:0 5px 14px #02091488;color:#e8f1f4}
-#esp-workbench .esp-part-esp{background:#193145}
-#esp-workbench .esp-part-handle{color:#e7f0f3;background:#29465a;border-bottom:1px solid #527086}
+#esp-workbench .esp-part{color:#e8f1f4}
+#esp-workbench .esp-part-handle{color:#bcd1df;background:transparent;border:0}
+#esp-workbench .esp-part-handle:hover{background:transparent;color:#e0f5ae;text-decoration:underline;text-underline-offset:4px}
 #esp-workbench .esp-component-icon{color:#9ebdce}
 #esp-workbench .esp-part-value{color:#d1e88a}
 #esp-workbench .esp-pin i{border-color:#d6e7ec;background:#28495d;box-shadow:0 0 0 1px #7591a2}
-#esp-workbench .esp-pin span{background:#102432ee;color:#e8f3f5;border:1px solid #4b697b}
+#esp-workbench .esp-pin span{background:#0d1b29e8;color:#e8f3f5;border:0}
+#esp-workbench .esp-pin.is-left span{left:auto;right:22px}
+#esp-workbench .esp-pin.is-right span{right:auto;left:22px}
+#esp-workbench .esp-pin.is-bottom span,#esp-workbench .esp-pin.is-top span{left:50%;right:auto;transform:translateX(-50%);top:22px}
+#esp-workbench .esp-pin.is-top span{top:-25px}
+#esp-workbench .esp-pin.is-bottom.label-stagger span{top:42px}
+#esp-workbench .esp-pin.is-top.label-stagger span{top:-45px}
 #esp-workbench .esp-wire.is-selected>path:last-child,
 #esp-workbench .esp-wire:focus>path:last-child{filter:drop-shadow(0 0 3px #8bc5e8)}
 #esp-workbench .esp-inputs{color:#c7d8df}
@@ -470,23 +476,17 @@ header,.code-panel{color:#22364b}
 #esp-workbench .esp-survey p,
 #esp-workbench #esp-photos figcaption{color:#bfd3dc}
 
-/* Recognisable components inside the connector carriers. */
+/* Components and their own terminals, without surrounding cards. */
 #esp-workbench .esp-backbar{color:#e8f1f5}
 #esp-workbench #esp-press{transition:none}
 #esp-stage{min-width:1250px;height:900px}
-#esp-workbench .esp-component-visual{position:absolute;inset:52px 62px 31px;display:flex;align-items:center;justify-content:center;pointer-events:none}
-#esp-workbench .esp-component-visual>svg{display:block;width:100%;max-height:112px;filter:drop-shadow(0 5px 4px #0005)}
-#esp-workbench .esp-component-visual>wokwi-esp32-devkit-v1{position:static;left:auto;top:auto;transform:scale(1.08)}
-#esp-workbench .esp-visual-r wokwi-resistor{transform:scale(1.85)}
-#esp-workbench .esp-visual-led wokwi-led{transform:scale(1.5)}
-#esp-workbench .esp-visual-button wokwi-pushbutton{transform:scale(1.1)}
-#esp-workbench .esp-visual-imu wokwi-mpu6050{transform:scale(1.12)}
-#esp-workbench .esp-visual-servo wokwi-servo{transform:scale(.64)}
+#esp-workbench .esp-component-visual{position:absolute;display:block;width:max-content;pointer-events:none}
+#esp-workbench .esp-component-visual>svg{display:block;width:150px;height:122px;filter:drop-shadow(0 5px 4px #0005)}
+#esp-workbench .esp-component-visual>*{display:block;position:static;transform:none}
 #esp-workbench .esp-part-led.is-lit .esp-component-visual{filter:drop-shadow(0 0 10px #9aee68)}
-#esp-workbench button.esp-button-press{position:absolute;left:calc(50% - 31px);top:calc(50% - 22px);width:62px;height:62px;background:transparent;border:0;border-radius:5px;padding:0;z-index:4;touch-action:none}
+#esp-workbench button.esp-button-press{position:absolute;left:46px;top:57px;width:84px;height:57px;background:transparent;border:0;border-radius:5px;padding:0;z-index:4;touch-action:none;pointer-events:auto}
 #esp-workbench button.esp-button-press:hover{background:#c8f36b11;outline:1px solid #c8f36b88}
 #esp-workbench .esp-pin.is-selected i{background:#9dce46;box-shadow:0 0 0 4px #c8f36b}
-#esp-workbench .esp-part{background:linear-gradient(135deg,#223e50,#162d3d)}
 #esp-workbench .esp-part-handle{font-family:Inter,Arial,sans-serif;font-size:12px}
 
 /* Flow-based statement builder, shared by the two final assignments. */
@@ -530,3 +530,42 @@ header,.code-panel{color:#22364b}
 .program-builder .builder-wait{font:11px/1.5 Arial,sans-serif;color:#b7cbdb;margin:0;padding:8px}
 @media(min-width:1501px){body.independent-workbench #sim-main{grid-template-columns:270px minmax(480px,1fr) 430px}#esp-workbench.is-independent .esp-layout{grid-template-columns:250px minmax(0,1fr) 430px}}
 @media(max-width:780px){.builder-panel{max-height:none}.program-builder .builder-order button{width:36px;min-height:36px}.builder-group{padding-left:7px}.builder-group.decision{padding-left:7px}}
+
+/* Guided ESP32 practice sits next to the student's device program. */
+#esp-workbench .esp-learning{margin:16px 0;border:1px solid #557485;border-radius:8px;background:#172e40;min-width:0}
+#esp-workbench .esp-learning-toggle{width:100%;text-align:left;padding:13px;background:transparent;color:#d8f3ae;border:0;font-size:13px}
+#esp-workbench .esp-learning-toggle::after{content:'▾';float:right}
+#esp-workbench .esp-learning-toggle[aria-expanded="false"]::after{content:'▸'}
+#esp-workbench .esp-lesson-body{padding:0 13px 13px}
+#esp-workbench .esp-lesson-goal{margin-top:0}
+#esp-workbench .esp-lesson-nav{display:flex;gap:6px;margin:12px 0;flex-wrap:wrap}
+#esp-workbench .esp-lesson-nav button{flex:1 1 90px;min-width:0;font-size:10px;padding:7px 5px;white-space:normal;background:#203e50;color:#d0e3ed;border-color:#627f90}
+#esp-workbench .esp-lesson-nav button[aria-current="step"]{border-color:#c8f36b;color:#dcf4a9;background:#2d4a41}
+#esp-workbench .esp-lesson-title{margin:16px 0 8px;text-transform:none;letter-spacing:0;font-size:15px;line-height:1.5;color:#f1f6f8}
+#esp-workbench .esp-lesson-code{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 Consolas,monospace;border:1px solid #3d5c6f;border-radius:5px;background:#102030;color:#c6e3f4;padding:10px;margin:10px 0}
+.esp-lesson-code .code-comment{color:#9cb4a7;font-style:italic}.esp-lesson-code .code-number{color:#ffbc96}.esp-lesson-code .code-keyword{color:#efa7e9}.esp-lesson-code .code-blank{color:#d9f481;background:#c8f36b18}
+#esp-workbench p.esp-lesson-note{font-size:11px;color:#acbec7;border-left:2px solid #67818e;padding-left:9px}
+#esp-workbench .esp-lesson-exercise{border-top:1px solid #3d5c6f;padding-top:6px;margin-top:15px}
+#esp-workbench .esp-lesson-fields{display:grid;gap:10px;margin-bottom:12px}
+#esp-workbench .esp-lesson-fields label{display:grid;gap:5px;font-size:11px;color:#d7e6ed}
+#esp-workbench .esp-lesson-fields input{min-width:0;width:100%;padding:9px;border:1px solid #7794a5;border-radius:5px;background:#0e2333;color:#edf7f8;font:13px Consolas,monospace;outline-offset:2px}
+#esp-workbench .esp-lesson-fields input:focus-visible{outline:2px solid #c8f36b}
+#esp-workbench .esp-lesson-fields input[aria-invalid="true"]{border-color:#e9a1a1}
+#esp-workbench .esp-lesson-feedback{min-height:1em;font-size:12px}
+#esp-workbench .esp-lesson-feedback.error{color:#ffcdc5}
+#esp-workbench .esp-lesson-feedback.success{color:#d5f39c}
+#esp-workbench .esp-lesson-next{width:100%}
+#esp-workbench .esp-lesson-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+#esp-workbench .esp-lesson-actions button{font-size:11px;flex:1 1 120px}
+#esp-workbench .esp-wiring-lesson{border:1px solid #526e81;border-radius:7px;padding:12px;margin-top:18px;background:#102334;font-size:12px;line-height:1.6}
+#esp-workbench .esp-wiring-lesson summary{color:#dcf4aa;cursor:pointer}
+#esp-workbench .esp-wiring-lesson p{color:#c0d2db}
+#esp-workbench .esp-wiring-lesson ol{padding-left:22px;display:grid;gap:7px}
+#esp-workbench .esp-wiring-lesson button{font-size:11px;text-align:left;white-space:normal;padding:7px 9px}
+#esp-workbench .esp-wiring-lesson button[aria-pressed="true"]{border-color:#c8f36b;color:#def5b2}
+#esp-workbench .esp-pin.is-guided i{background:#6c9951;box-shadow:0 0 0 4px #c8f36b,0 0 16px #c8f36b88}
+#esp-workbench .esp-pin.is-top{width:14px;height:14px}
+#esp-workbench .esp-pin.is-top i{width:14px;height:14px;border-width:2px}
+#esp-workbench .esp-terminal-leads{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+@media(min-width:1501px){#esp-workbench:not(.is-independent) .esp-layout{grid-template-columns:250px minmax(0,1fr) 405px}}
+@media(max-width:1150px) and (min-width:781px){#esp-workbench .esp-layout{grid-template-columns:minmax(0,1fr) 380px}}

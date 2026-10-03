@@ -6,6 +6,7 @@ import {solutions,wire} from './verify-career.mjs';
 import {emptySketch,careerCases} from './career-cases.js';
 import {missions} from './lessons.js';
 import {blockSolutions} from './verify-program-blocks.mjs';
+import {espLessons} from './esp-learning.js';
 
 const port=process.env.NEXORA_TEST_PORT||'8092',out=process.env.NEXORA_TEST_ARTIFACTS||'/tmp/nexora-career-check';await mkdir(out,{recursive:true});
 const server=spawn(process.execPath,['serve.mjs'],{env:{...process.env,PORT:port},stdio:['ignore','pipe','pipe']});
@@ -40,6 +41,23 @@ async function assemble(kind){
  assert.deepEqual((await state()).program.zones,solution.zones);
 }
 async function add(wires,esp=false){for(const w of wires){await page.locator(`${esp?'#esp-stage':'#board'} [data-pin="${w.a}"]`).click();await page.locator(`${esp?'#esp-stage':'#board'} [data-pin="${w.b}"]`).click();}assert.equal((await state()).wires.length,wires.length);}
+async function learn(index){
+ const ui=page.locator('#esp-learning-mount'),before=(await state()).code;
+ assert.equal(await ui.locator('.esp-learning').count(),1);
+ if(index===9){await page.screenshot({path:`${out}/esp-learning.png`,fullPage:true});await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:`${out}/esp-learning-mobile.png`,fullPage:true});await page.setViewportSize({width:1680,height:1050});}
+ for(const [i,step] of espLessons[index].steps.entries()){
+  assert.equal((await state()).learning.step,i);
+  if(i===0){await ui.locator('[data-lesson-field]').first().fill('неверно');await ui.getByRole('button',{name:'Проверить ответ'}).click();assert(await ui.locator('.esp-lesson-feedback.error').isVisible());assert.equal((await state()).learning.solved[0],false);assert(await ui.locator('.esp-lesson-next').isDisabled());}
+  for(const field of step.fields)await ui.locator(`[data-lesson-field="${field.id}"]`).fill(field.answer);
+  await ui.getByRole('button',{name:'Проверить ответ'}).click();assert(await ui.locator('.esp-lesson-feedback.success').isVisible());assert.equal((await state()).learning.solved[i],true);
+  if(index===9&&i===0){await page.reload();await ui.locator('.esp-learning').waitFor();assert.equal((await state()).learning.solved[0],true);assert.equal((await state()).code,before);}
+  if(i===espLessons[index].steps.length-1){await ui.getByRole('button',{name:'Разобрать соединения'}).click();assert.equal(await page.locator('#esp-wiring-lesson .esp-pin.is-guided').count(),0);assert.equal(await page.locator('#esp-stage .esp-pin.is-guided').count(),2);await page.locator('#esp-wiring-lesson summary').click();}
+  await ui.locator('.esp-lesson-next').click();
+ }
+ assert.equal((await state()).learning.collapsed,true);assert.equal((await state()).code,before);assert.equal((await state()).wires.length,0);
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.setViewportSize({width:1680,height:1050});
+ console.log(`PASS case${index-1}: lesson feedback, independent code/wires, lesson progress and responsive layout`);
+}
 async function finish(id){await page.locator('.mission-transition-action').waitFor({timeout:150000});await page.locator('.mission-transition-action').click();await page.locator('.mission-transition').waitFor({state:'detached'});await action().filter({hasText:'Закрыть папку'}).click();assert((await progress()).game.completedCases.includes(id));if(id!=='012'){await page.locator('.case-reveal-primary').click();await page.locator('.case-reveal').waitFor({state:'detached'});}else await page.locator('#archive-modal[open]').waitFor();}
 try{
  await page.goto(`http://127.0.0.1:${port}`);await page.waitForFunction(()=>window.nexoraWorkshop);
@@ -67,12 +85,15 @@ try{
  await page.locator('#run').click();await page.waitForFunction(()=>window.nexoraWorkshop.getState().running||!document.querySelector('#run').disabled,null,{timeout:180000});assert((await state()).running,await page.locator('#console').innerText());await page.locator('#check').click();await finish('007');console.log('PASS case007: blocks, drag/reorder, separate C++ draft, reload, real AVR timing failure/correction, behavioral checks and promotion');}
  for(const index of [9,10,11,12,13]){
   const id=String(index-1).padStart(3,'0'),solution=solutions[index];await enter(id);assert.equal((await state()).wires.length,0);assert.equal((await state()).mission,index);
-  if(index===13){assert.equal((await state()).program.mode,'blocks');assert.equal(await page.locator('.esp-reference').count(),0);}else assert(await page.locator('.esp-reference').count());
+  if(index===13){assert.equal((await state()).program.mode,'blocks');assert.equal(await page.locator('.esp-reference').count(),0);assert.equal(await page.locator('.esp-learning,#esp-wiring-lesson').count(),0);}else{assert(await page.locator('.esp-reference').count());await learn(index);}
+  const containers=await page.locator('.esp-part').evaluateAll(parts=>parts.map(part=>{const s=getComputedStyle(part);return {bg:s.backgroundColor,image:s.backgroundImage,border:s.borderTopWidth,shadow:s.boxShadow};}));assert(containers.every(s=>s.bg==='rgba(0, 0, 0, 0)'&&s.image==='none'&&s.border==='0px'&&s.shadow==='none'));
   await page.locator('#esp-check').click();await page.locator('#esp-messages.error').waitFor();assert.equal(await page.locator('.mission-transition').count(),0);
   if(index===9){for(const tag of ['wokwi-resistor','wokwi-led','wokwi-pushbutton','wokwi-esp32-devkit-v1'])assert.equal(await page.locator('#esp-stage '+tag).count(),1);await page.locator('#esp-board').screenshot({path:`${out}/esp-components.png`});
    await checkButtonContrast('#esp-press');await page.locator('#esp-press').focus();await page.keyboard.down(' ');await checkButtonContrast('#esp-press');await page.keyboard.up(' ');await checkButtonContrast('#esp-press');
   }
-  await add(solution.wires,true);if(index===13)await assemble('esp32');else await edit(solution.code,true);await page.locator('#esp-run').click();await page.waitForFunction(()=>window.nexoraWorkshop.getState().running||document.querySelector('#esp-messages.error'),null,{timeout:15000});assert((await state()).running,await page.locator('#esp-messages').innerText());
+  await add(solution.wires,true);if(index===13)await assemble('esp32');else await edit(solution.code,true);
+  if(index===9){const before=await state();await page.locator('.esp-part-r .esp-part-handle').focus();await page.keyboard.press('ArrowRight');await page.locator('#esp-arrange').click();assert.equal((await state()).code,before.code);assert.deepEqual((await state()).wires,before.wires);await page.screenshot({path:`${out}/esp-circuit-connected.png`,fullPage:true});}
+  await page.locator('#esp-run').click();await page.waitForFunction(()=>window.nexoraWorkshop.getState().running||document.querySelector('#esp-messages.error'),null,{timeout:15000});assert((await state()).running,await page.locator('#esp-messages').innerText());
   if(index===9){await page.locator('#esp-button-press').focus();await page.keyboard.down(' ');await page.waitForFunction(()=>window.nexoraWorkshop.getState().state?.led===true);assert(await page.locator('#esp-stage wokwi-led').evaluate(el=>el.value));await page.keyboard.up(' ');await page.waitForFunction(()=>window.nexoraWorkshop.getState().state?.led===false);await page.locator('#esp-stop').click();await page.locator('#esp-stage .esp-wire').first().focus();await page.keyboard.press('Enter');await page.locator('#esp-wire-delete').click();assert.equal((await state()).wires.length,solution.wires.length-1);await page.locator('#esp-stage [data-pin="esp:25"]').click();await page.locator('#esp-stage [data-pin="r:1"]').click();await page.reload();await page.locator('#esp-editor .cm-content').waitFor();assert.equal((await state()).wires.length,solution.wires.length);assert.equal((await state()).code,solution.code);}
   if(index>=12){const press=page.locator('#esp-press');await press.focus();await page.keyboard.down(' ');await page.waitForFunction(()=>window.nexoraWorkshop.getState().state?.photos.length===3);await page.keyboard.up(' ');assert.equal(await page.locator('#esp-photos figure').count(),3);await page.screenshot({path:`${out}/case-${id}-photos.png`,fullPage:true});await page.locator('#esp-stop').click();}
   await page.locator('#esp-check').click();await finish(id);console.log(`PASS case${id}: actual wiring, worker execution, behavior tests, completion and next-case transition`);

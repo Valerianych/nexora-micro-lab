@@ -10,7 +10,8 @@
     "check:workspace": "node verify-workspace.mjs",
     "check:career": "node verify-career.mjs",
     "check:career-browser": "node verify-career-browser.mjs",
-    "check:blocks": "node verify-program-blocks.mjs"
+    "check:blocks": "node verify-program-blocks.mjs",
+    "check:esp-learning": "node verify-esp-learning.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
