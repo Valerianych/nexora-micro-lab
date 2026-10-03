@@ -13,7 +13,8 @@
     "check:blocks": "node verify-program-blocks.mjs",
     "check:esp-learning": "node verify-esp-learning.mjs",
     "check:electricity": "node verify-electricity.mjs",
-    "check:electricity-browser": "node verify-electricity-browser.mjs"
+    "check:electricity-browser": "node verify-electricity-browser.mjs",
+    "check:case-one": "node verify-case-one.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

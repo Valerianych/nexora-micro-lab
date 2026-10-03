@@ -4,6 +4,7 @@ import {modelMarkup, bindModel} from './case-models.js';
 import {loopTrace} from './case-two.js';
 import {createImageCache, createSceneGate, artSource} from './story-media.js';
 import {createElectricitySchool} from './electricity-school.js';
+import {diagnosticChecks,normalizeCaseOne,diagnosisComplete} from './case-one.js';
 const $ = (id) => document.getElementById(id);
 const electricitySchool = createElectricitySchool({saved:readProgress().electricity,onChange:value=>writeProgress('electricity',value)});
 
@@ -34,6 +35,7 @@ const initialState = () => ({
   traceStep: 0, traceBound: 2, traceComplete: false,
   caseStage:0, caseReached:0, modelSeen:[], modelValue:0, modelDone:false, modelSetting:'',
   caseSaves:{}, rewarded:new Set(),
+  caseOne:normalizeCaseOne(),
 });
 const state = initialState();
 const savedGame = restoreGame(readProgress().game);
@@ -407,6 +409,7 @@ function resetCaseProgress({ resetScore = false } = {}) {
   state.tookResistor = false;
   state.inspectedServer = false;
   state.inspectedButton = false;
+  state.caseOne=normalizeCaseOne();
   state.final = false;
   state.introStep = 0;
   state.introDone = false;
@@ -696,6 +699,10 @@ function inspectPanel() {
 }
 
 function renderWorkshop() {
+  if(!state.completed.has(0)&&!state.inspectedResistor&&!diagnosisComplete(state.caseOne))return renderDiagnosis();
+  if(state.completed.has(0)&&!state.caseOne.transferDone){
+    renderStoryBeat({room:'workshop',location:'МАСТЕРСКАЯ · 09:04',status:'НОВОЕ УСЛОВИЕ',frame:'restored',kicker:'ЭПИЗОД 01 / ПРОВЕРЬ ПОНИМАНИЕ',title:'Другой контакт. Тот же маяк.',text:'Для следующего устройства нужен D12. Перенеси цепь на этот выход и исправь связь кода с платой. Свет и темнота должны остаться по 500 мс.',actionLabel:'Испытать маяк на D12 →',action:()=>openWorkbench(0,{mode:'transfer'}),voice:'«Схема уже работает. Теперь проверь, какие два места связывают программу с физическим выводом. Готовую схему повторять не придётся».'});return;
+  }
   if (state.completed.has(0)) {
     renderStoryBeat({ room: 'workshop', location: 'МАСТЕРСКАЯ · 09:02', status: 'ЦЕПЬ ВОССТАНОВЛЕНА', frame: 'restored', kicker: 'ЭПИЗОД 01 / РЕЗУЛЬТАТ', title: 'Первый свет. Получилось!', text: 'Светодиод оживает. Сигнал снова проходит через резистор и возвращается к плате.', actionLabel: 'Идти в серверную →', action: () => enterRoom('server'), voice: '«Цепь работает. Теперь проверим, каким ритмом маяк отправляет пакеты».' });
     return;
@@ -708,6 +715,28 @@ function renderWorkshop() {
   } else {
     renderStoryBeat({ room: 'workshop', location: 'МАСТЕРСКАЯ · 08:51', status: 'СХЕМА НЕПОЛНА', frame: 'workshop', kicker: 'ЭПИЗОД 01 / ВЕЩЕСТВЕННАЯ УЛИКА', title: 'На столе не хватает одного решения.', text: 'Из-под журнала выглядывает деталь с цветными полосами. Сначала рассмотри её, затем подключай плату.', actionLabel: 'Осмотреть деталь →', action: inspectResistor, voice: '«Не подключай светодиод напрямую. Найди, что ограничит ток».' });
   }
+}
+
+let diagnosisFeedback='';
+function renderDiagnosis(){
+  const investigation=state.caseOne,done=diagnosisComplete(investigation),item=diagnosticChecks[investigation.selected];
+  const kind=investigation.selected||'initial';
+  const diagram=`<svg class="diagnosis-diagram" viewBox="0 0 600 135" role="img" aria-label="${item?.reading||'Схема аварии: питание платы сохранено, внешняя ветвь оборвана'}"><rect x="12" y="20" width="125" height="95" rx="8" fill="#266481"/><text x="74" y="52" text-anchor="middle">Arduino Uno</text><circle cx="37" cy="77" r="7" fill="#c8f36b"/><text x="58" y="82">USB · 5 В</text><path d="M137 50 H240 M285 50 H384" stroke="${kind==='circuit'?'#f0bb7d':'#9ab6c4'}" stroke-width="4" fill="none"/><path d="M240 50 H285" stroke="#f0bb7d" stroke-width="3" stroke-dasharray="4 6"/><text x="262" y="87" text-anchor="middle">разрыв</text><circle cx="405" cy="50" r="19" fill="#305443" stroke="#adcdb5" stroke-width="2"/><text x="405" y="88" text-anchor="middle">внешний LED</text><path d="M405 69 V110 H137" stroke="#9ab6c4" stroke-width="3" fill="none"/>${kind==='program'?'<path d="M455 88 V43 H480 V88 H505 V43 H530 V88 H555" stroke="#c8f36b" stroke-width="3" fill="none"/><text x="511" y="113" text-anchor="middle">лог D13</text>':'<text x="500" y="62" text-anchor="middle">LED не светит</text>'}</svg>`;
+  const extra=`<section class="case-diagnosis" aria-label="Проверка гипотез"><h4>Сначала собери доказательства</h4><div class="diagnosis-choices">${Object.entries(diagnosticChecks).map(([id,check])=>`<button type="button" data-diagnostic-check="${id}" aria-pressed="${investigation.selected===id}">${investigation.checks.includes(id)?'✓ ':''}${check.label}</button>`).join('')}</div>${diagram}<p class="diagnosis-reading" role="status">${item?.reading||'Выбери проверку. Питание, запись команды и целая цепь — разные вещи.'}</p><fieldset class="diagnosis-verdict"><legend>Какая причина подтверждается уликами?</legend>${[['power','Плата не получает питание'],['program','В журнале нет переключений D13'],['circuit','Оборван путь через внешний LED']].map(([id,label])=>`<button type="button" data-diagnostic-verdict="${id}" ${investigation.checks.length<3?'disabled':''}>${label}</button>`).join('')}</fieldset><p class="diagnosis-feedback" role="status">${done?'Причина подтверждена: восстановим внешнюю ветвь с ограничением тока.':diagnosisFeedback||`Проверено ${investigation.checks.length} из 3. Проверки можно выбирать в любом порядке.`}</p></section>`;
+  renderStoryBeat({room:'workshop',location:'МАСТЕРСКАЯ · 08:50',status:done?'ПРИЧИНА ПОДТВЕРЖДЕНА':'ПРОВЕРЬ ГИПОТЕЗУ',frame:item?.frame||'workshop',kicker:'ДЕЛО 001 / ДИАГНОСТИКА',title:done?'Улики указывают на цепь.':item?.title||'С чего начнёшь проверку?',text:done?'Питание есть, журнал содержит переключения, а внешняя ветвь оборвана. Найди деталь для безопасного ремонта.':item?.text||'Маяк погас. Выбери, что проверить, собери три наблюдения и установи причину.',voice:done?'«Все три наблюдения сходятся: ремонтируем внешнюю цепь. Потом проверим, действительно ли маяк ожил».':item?.voice||'«Угадывать можно, но вывод нужно подтвердить. Ошибочная гипотеза тоже помогает, если ты её проверила».',extra,actionLabel:'Найти деталь для ремонта →',action:()=>renderWorkshop(),onReady:()=>{
+    comicIntro.querySelector('[data-story-action]').disabled=!done;
+    comicIntro.querySelectorAll('[data-diagnostic-check]').forEach(button=>button.onclick=()=>{
+      const id=button.dataset.diagnosticCheck;investigation.selected=id;diagnosisFeedback='';
+      if(!investigation.checks.includes(id)){investigation.checks.push(id);addClue(diagnosticChecks[id].reading,null,5);appendJournal(`Диагностика / ${diagnosticChecks[id].label}`,diagnosticChecks[id].text);}
+      saveGame();renderDiagnosis();
+    });
+    comicIntro.querySelectorAll('[data-diagnostic-verdict]').forEach(button=>button.onclick=()=>{
+      if(investigation.checks.length!==3)return;
+      if(button.dataset.diagnosticVerdict==='circuit'){investigation.verdict='circuit';appendJournal('Диагноз маяка','Питание подтверждено; в журнале D13 переключался. Разрыв внешней ветви объясняет отсутствие света.');}
+      else diagnosisFeedback=button.dataset.diagnosticVerdict==='power'?'Между 5V и GND измерено 5 В. Эта улика исключает отключённое питание.':'В журнале есть HIGH и LOW. Запись переключений не гарантирует, что внешний LED соединён с выходом.';
+      saveGame();renderDiagnosis();
+    });
+  }});
 }
 
 function inspectResistor() {
@@ -729,7 +758,7 @@ function renderServer() {
   } else if (state.inspectedServer) {
     renderStoryBeat({ room: 'server', location: 'СЕРВЕРНАЯ · 09:10', status: 'НУЖЕН НОВЫЙ РИТМ', frame: 'signal', kicker: 'ЭПИЗОД 02 / ПЕРЕМЕННАЯ', title: 'Посмотри на расстояния между импульсами.', text: 'Поставь 250 миллисекунд в переменную pauseMs и используй её в обеих командах delay — свет и темнота должны быть одинаковыми.', actionLabel: 'Настроить ритм в коде →', action: () => openWorkbench(1), voice: '«Переменная — это подписанная коробка со значением. Одно имя управляет двумя паузами».' });
   } else {
-    renderStoryBeat({ room: 'server', location: 'СЕРВЕРНАЯ · 09:07', status: 'РИТМ СБОИТ', frame: 'server', kicker: 'ЭПИЗОД 02 / СЛУШАЙ СИГНАЛ', title: 'Сигнал есть, но он слишком быстрый.', text: 'После сборки линия ожила, но вспышки разной длины похожи на помехи. Оператор показывает график пакетов.', actionLabel: 'Рассмотреть сигнал →', action: inspectServer, voice: '«Я вижу импульсы. Давай измерим их, прежде чем менять программу».' });
+    renderStoryBeat({ room: 'server', location: 'СЕРВЕРНАЯ · 09:07', status: 'РИТМ СБОИТ', frame: 'server', kicker: 'ЭПИЗОД 02 / СЛУШАЙ СИГНАЛ', title: 'Сигнал есть, но пакеты идут слишком редко.', text: 'После сборки LED светится 500 мс и столько же остаётся погашенным. Приёмнику нужны более короткие интервалы. Оператор показывает требуемый ритм.', actionLabel: 'Рассмотреть сигнал →', action: inspectServer, voice: '«Я вижу импульсы. Давай измерим их, прежде чем менять программу».' });
   }
 }
 
@@ -742,7 +771,7 @@ function renderRoof() {
   if (state.final) {
     renderStoryBeat({ room: 'roof', location: 'КРЫША · 09:31', status: 'ДЕЛО ЗАКРЫТО', frame: 'final', kicker: 'ЭПИЗОД 03 / ФИНАЛ', title: 'Сигнал снова виден всему городу.', text: 'Маяк передаёт чистую последовательность. Ты научилась читать цепь, задавать значения и заставлять программу выбирать действие.', actionLabel: 'Открыть новое дело →', action: completeCurrentCase, voice: '«Комиссия увидит работающий маяк. Дело закрыто».', extra: renderSkillSummary() });
   } else if (state.inspectedButton) {
-    renderStoryBeat({ room: 'roof', location: 'КРЫША · 09:25', status: 'НУЖНА РЕАКЦИЯ', frame: 'button', kicker: 'ЭПИЗОД 03 / УСЛОВИЕ', title: 'Нажатие есть. Нужна реакция.', text: 'Вход D2 сообщает о нажатии, а D13 управляет светом. Программа должна выбрать ветку if/else.', actionLabel: 'Открыть финальный верстак →', action: () => openWorkbench(2), voice: '«Проверь обе ситуации: отпущена и нажата. Свет должен загораться только по условию».' });
+    renderStoryBeat({ room: 'roof', location: 'КРЫША · 09:25', status: 'НУЖНА РЕАКЦИЯ', frame: 'button', kicker: 'ЭПИЗОД 03 / УСЛОВИЕ', title: 'Нажатие есть. Нужна реакция.', text: 'Вход D2 сообщает о нажатии, а выход с номером ledPin управляет светом. Сверь его значение с сохранённой цепью. Программа должна выбрать ветку if/else.', actionLabel: 'Открыть финальный верстак →', action: () => openWorkbench(2), voice: '«Проверь обе ситуации: отпущена и нажата. Свет должен загораться только по условию».' });
   } else {
     renderStoryBeat({ room: 'roof', location: 'КРЫША · 09:23', status: 'ФИНАЛЬНАЯ ПРОВЕРКА', frame: 'roof', kicker: 'ЭПИЗОД 03 / РЕШЕНИЕ', title: 'Один импульс отделяет систему от запуска.', text: 'У маяка появилась кнопка. Свет должен загораться только в момент нажатия — иначе комиссия сочтёт систему неисправной.', actionLabel: 'Осмотреть кнопку →', action: inspectButton, voice: '«Нам нужен свет именно по нажатию. Посмотри на вход контроллера».' });
   }
@@ -849,6 +878,7 @@ function renderRoom() {
 }
 
 function enterRoom(room) {
+  if(state.activeCase==='001'&&state.completed.has(0)&&!state.caseOne.transferDone&&['server','roof'].includes(room)){state.room='workshop';renderRoom();return;}
   if (!state.unlocked.has(room)) return;
   if(extraCases[state.activeCase]){
     const target={briefing:0,workshop:1,server:state.caseReached>=3?3:2,roof:4}[room];
@@ -865,6 +895,7 @@ function enterRoom(room) {
 }
 
 function openWorkbench(index, options = {mode:'repair'}) {
+  if(index===0&&state.activeCase==='001'&&options.mode!=='transfer')options={...options,requireSignalExercise:!state.completed.has(0)};
   if(index===0&&state.activeCase==='001'&&!state.completed.has(0)&&!electricitySchool.isComplete()){
     state.view='story';saveGame();
     electricitySchool.open({onComplete:()=>openWorkbench(index,options)});
@@ -876,7 +907,7 @@ function openWorkbench(index, options = {mode:'repair'}) {
   const objectives = ['Собери первую цепь и верни сигнал', 'Настрой ритм пакетов через переменную', 'Сделай маяк реагирующим на кнопку', options.mode === 'observe' ? 'Запусти исходную программу и запиши две серии' : 'Верни третью вспышку и проверь две серии', 'Собери список световых сигналов', 'Вынеси повторяющееся действие в функцию','Подключи датчик и настрой включение при 35 °C','Проверь перегрев и кнопку как независимые причины тревоги'];
   const activeWorkshop = window.nexoraWorkshop;
   if (activeWorkshop && typeof activeWorkshop.open === 'function') {
-    setText('workbench-objective', objectives[index] || extraCases[state.activeCase]?.repair.title || 'Выполни задание');
+    setText('workbench-objective', options.mode==='transfer'?'Перенеси маяк на D12: по 500 мс свет и темнота':objectives[index] || extraCases[state.activeCase]?.repair.title || 'Выполни задание');
     activeWorkshop.open(index, options);
     return;
   }
@@ -893,7 +924,7 @@ function openWorkbench(index, options = {mode:'repair'}) {
     if (ready && typeof ready.open === 'function') {
       window.clearInterval(workbenchWaitTimer);
       workbenchWaitTimer = null;
-      setText('workbench-objective', objectives[index] || extraCases[state.activeCase]?.repair.title || 'Выполни задание');
+      setText('workbench-objective', options.mode==='transfer'?'Перенеси маяк на D12: по 500 мс свет и темнота':objectives[index] || extraCases[state.activeCase]?.repair.title || 'Выполни задание');
       ready.open(index, options);
       return;
     }
@@ -1016,8 +1047,8 @@ function finishMission(mission) {
   }
   if (mission === 0) {
     addClue('собранный маяк', 'схема питания', 35);
-    unlock('server');
-    if (!wasComplete) appendJournal('09:02 / Мастерская', 'Первая цепь собрана. Маяк отвечает двумя импульсами.');
+    if(state.caseOne.transferDone)unlock('server');
+    if (!wasComplete) appendJournal('09:02 / Мастерская', 'Первая цепь собрана. Внешний LED переключается каждые 500 мс. Следующая проверка — перенос на D12.');
     state.room = 'workshop';
   } else if (mission === 1) {
     unlock('roof');
@@ -1102,6 +1133,13 @@ window.addEventListener('nexora:mission-complete', (event) => {
     state.repairResult = mission === 3 ? signalSnapshot(event.detail.signal) : null;
     showMissionTransition(mission, event.detail.name);
   }
+});
+window.addEventListener('nexora:transfer-complete',()=>{
+  if(!state.started||state.activeCase!=='001'||state.view!=='workbench'||state.workbenchMode!=='transfer')return;
+  const already=state.caseOne.transferDone;state.caseOne.transferDone=true;state.view='story';state.room='workshop';
+  window.nexoraWorkshop?.close?.();unlock('server');
+  if(!already){addClue('маяк работает на D12',null,15);appendJournal('Проверка переноса','Реальная программа переключает внешний LED на D12 каждые 500 мс. Номер контакта в коде согласован с проводом.');}
+  renderStats();renderRoom();saveGame();
 });
 
 window.addEventListener('nexora:signal-observed', event => {

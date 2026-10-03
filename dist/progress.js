@@ -1,4 +1,5 @@
 import {normalizeBlocks} from './program-blocks.js';
+import {normalizeCaseOne,normalizeSignalExercise} from './case-one.js';
 import {CASE_MISSIONS, caseIds, modelComplete} from './case-stories.js';
 // Shared by the story and workbench. Each writer preserves the other section.
 export const PROGRESS_KEY = 'nexora-progress-v1';
@@ -62,6 +63,7 @@ export function restoreGame(raw) {
   game.unlockedCases.add('001');
   game.unlocked.add('briefing');
   for (const id of game.completedCases) { const next = cases[cases.indexOf(id)+1]; if (next) game.unlockedCases.add(next); }
+  game.caseOne=normalizeCaseOne(raw.caseOne,{legacyComplete:game.completed.has(0)});
   if (!game.unlockedCases.has(game.activeCase)) return null;
   game.clues = strings(raw.clues);
   game.inventory = strings(raw.inventory);
@@ -70,7 +72,7 @@ export function restoreGame(raw) {
   game.view = raw.view === 'workbench' ? 'workbench' : 'story';
   game.workbenchIndex = integer(raw.workbenchIndex, 0, Math.max(...Object.values(CASE_MISSIONS).flat()));
   if (!CASE_MISSIONS[game.activeCase].includes(game.workbenchIndex)) { game.workbenchIndex=CASE_MISSIONS[game.activeCase][0]; game.view='story'; }
-  game.workbenchMode = raw.workbenchMode === 'observe' && game.workbenchIndex === 3 ? 'observe' : 'repair';
+  game.workbenchMode = raw.workbenchMode === 'observe' && game.workbenchIndex === 3 ? 'observe' : raw.workbenchMode==='transfer'&&game.activeCase==='001'&&game.workbenchIndex===0?'transfer':'repair';
   if (game.activeCase === '002' && game.final) { game.case2Stage = 5; game.case2Reached = 5; game.room = 'roof'; }
   if (Number(game.activeCase)>=3 && game.final) { game.caseStage=4; game.caseReached=4; game.room='roof'; }
   game.rewarded = new Set(strings(raw.rewarded));
@@ -92,18 +94,20 @@ export function serializeGame(state) {
 export function restoreWorkshop(raw, validPins, missionCount) {
   const drafts = {};
   for (const [key, value] of Object.entries(raw?.drafts || {})) {
-    if ((!/^\d+$/.test(key) && key !== '3-observe') || (key !== '3-observe' && Number(key) > missionCount) || !value || typeof value.code !== 'string') continue;
+    if ((!/^\d+$/.test(key) && !['3-observe','0-transfer'].includes(key)) || (!['3-observe','0-transfer'].includes(key) && Number(key) > missionCount) || !value || typeof value.code !== 'string') continue;
     drafts[key] = {
       independent:value.independent===true,program:value.program?normalizeBlocks('arduino',value.program):undefined,code:value.code.slice(0,100000), temperature:integer(value.temperature,0,80,25), step:integer(value.step,0,20), breadboard:value.breadboard === true,
+      signalExercise:normalizeSignalExercise(value.signalExercise),signalExerciseRequired:value.signalExerciseRequired===true,
       canvasWidth:integer(value.canvasWidth,1,10000),
       positions:Object.fromEntries(Object.entries(value.positions||{}).filter(([id,p])=>['uno','r','led','button','sensor'].includes(id)&&p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.y>=0&&p.x<=10000&&p.y<=10000).map(([id,p])=>[id,{x:p.x,y:p.y}])),
       wires:Array.isArray(value.wires) ? value.wires.filter(w => w && validPins.has(w.a) && validPins.has(w.b) && w.a !== w.b && (value.breadboard || (!w.a.startsWith('bb:') && !w.b.startsWith('bb:')))).slice(0,100).map(w => ({a:w.a,b:w.b,color:/^#[0-9a-f]{6}$/i.test(w.color) ? w.color : '#e04f50'})) : [],
     };
   }
-  return {drafts, activeIndex:integer(raw?.activeIndex,0,missionCount), mode:raw?.mode === 'observe' ? 'observe' : 'repair', completed:new Set(list(raw?.completed,Array.from({length:missionCount},(_,i)=>i)))};
+  const activeIndex=integer(raw?.activeIndex,0,missionCount);
+  return {drafts, activeIndex, mode:raw?.mode === 'observe'&&activeIndex===3 ? 'observe' : raw?.mode==='transfer'&&activeIndex===0?'transfer':'repair', completed:new Set(list(raw?.completed,Array.from({length:missionCount},(_,i)=>i)))};
 }
 
-const caseFields = ['started','room','clues','inventory','unlocked','completed',...flags,'introStep','journal','view','workbenchIndex','workbenchMode','case2Stage','case2Reached','observation','repairResult','traceStep','traceBound','caseStage','caseReached','modelSeen','modelValue','modelDone','modelSetting'];
+const caseFields = ['started','room','clues','inventory','unlocked','completed',...flags,'introStep','journal','view','workbenchIndex','workbenchMode','caseOne','case2Stage','case2Reached','observation','repairResult','traceStep','traceBound','caseStage','caseReached','modelSeen','modelValue','modelDone','modelSetting'];
 export function caseSnapshot(state){
   const serial=serializeGame(state);
   return Object.fromEntries(caseFields.filter(key=>key in serial).map(key=>[key,structuredClone(serial[key])]));
@@ -111,6 +115,7 @@ export function caseSnapshot(state){
 export function clearWorkshop(raw,indices=null){
   if(!indices)return {drafts:{},completed:[],activeIndex:0,mode:'repair'};
   const keys=new Set(indices.map(String));if(indices.includes(3))keys.add('3-observe');
+  if(indices.includes(0))keys.add('0-transfer');
   return {...raw,drafts:Object.fromEntries(Object.entries(raw?.drafts||{}).filter(([key])=>!keys.has(key))),completed:(raw?.completed||[]).filter(i=>!indices.includes(i))};
 }
 export function clearProgress(storage){

@@ -11,6 +11,8 @@ import {matchesAlarmPattern,alarmTimingHint} from './alarm-timing.js';
 import {componentNames,pinLabel,displayPin,pinDescription,connectionMarkup,ledConnections} from './circuit-labels.js';
 import {readProgress, writeProgress, restoreWorkshop, clearWorkshop} from './progress.js';
 import {analyzeSiren} from './case-two.js';
+import {normalizeSignalExercise} from './case-one.js';
+import {createSignalExercise} from './signal-exercise.js';
 import {arduinoWords,serialWords,analyzeSketch,compilerDiagnostics,sketchSymbols} from './arduino-language.js';
 import {Compartment,EditorState} from '@codemirror/state';
 import {EditorView,drawSelection,highlightActiveLine,keymap,lineNumbers,highlightSpecialChars,placeholder} from '@codemirror/view';
@@ -30,13 +32,14 @@ let breadboard=false;
 let workbenchMode='repair',drafts={},savingReady=false,restoringDraft=false,draftSaveTimer;
 let temperature=25;
 let programBuilder=null;
+let signalExercise=null,signalExerciseState=normalizeSignalExercise(),signalExerciseRequired=false;
 let layoutReady=false,layoutWidth=0;
 const sensorPins=[{name:'VCC',x:16,y:14},{name:'GND',x:16,y:58},{name:'OUT',x:105,y:36}];
 function saveWorkshop(){
   clearTimeout(draftSaveTimer);
   if(!savingReady||restoringDraft)return;
-  const key=workbenchMode==='observe'?'3-observe':mission;
-  drafts[key]={independent:missions[mission]?.independent===true,code:currentCode(),program:programBuilder?.snapshot(),wires:wires.map(w=>({...w})),breadboard,temperature,step,positions:layoutReady?capturePositions():drafts[key]?.positions,canvasWidth:layoutWidth||drafts[key]?.canvasWidth};
+  const key=workbenchMode==='observe'?'3-observe':workbenchMode==='transfer'?'0-transfer':mission;
+  drafts[key]={independent:missions[mission]?.independent===true,code:currentCode(),program:programBuilder?.snapshot(),signalExercise:signalExerciseState,signalExerciseRequired,wires:wires.map(w=>({...w})),breadboard,temperature,step,positions:layoutReady?capturePositions():drafts[key]?.positions,canvasWidth:layoutWidth||drafts[key]?.canvasWidth};
   writeProgress('workshop',{drafts,completed:[...completed],activeIndex:mission,mode:workbenchMode});
 }
 function queueDraftSave(){if(!savingReady||restoringDraft)return;clearTimeout(draftSaveTimer);draftSaveTimer=setTimeout(saveWorkshop,180);}
@@ -338,10 +341,11 @@ $('undo').onclick=()=>{if(testRunning||busy)return;stop();wires.pop();renderWire
 $('reset').onclick=()=>{if(!window.confirm('Сбросить программу и провода текущего задания?'))return;loadMission(mission,{mode:workbenchMode,reset:true});};
 
 function renderLesson(){
+ signalExercise?.destroy();signalExercise=null;
  document.body.classList.toggle('independent-workbench',Boolean(missions[mission]?.independent));
  document.querySelectorAll('.pin[data-pin]').forEach(button=>{button.title=displayPin(button.dataset.pin)+(missions[mission]?.independent?'':'. '+pinDescription(button.dataset.pin));});
  const sensorVisible=mission>=6; sensorControl.hidden=!sensorVisible; const sensorPart=parts.get('sensor'); if(sensorPart) sensorPart.part.hidden=!sensorVisible;
- const free=mission===FREE, m=missions[Math.min(mission,FREE-1)], observing=workbenchMode==='observe';
+ const free=mission===FREE, m=missions[Math.min(mission,FREE-1)], observing=workbenchMode==='observe',transferring=workbenchMode==='transfer';
  document.querySelector('.lesson>.eyebrow').textContent=observing?'ДЕЛО 002 / НАБЛЮДЕНИЕ':free?'СВОБОДНЫЙ ЭКСПЕРИМЕНТ':`ДЕЛО ${String(mission<3?1:mission-1).padStart(3,'0')} / РЕМОНТ`;
  document.querySelector('.lesson h1').textContent=observing?'Найди сбой.':free?'Твоя идея.':['Подай сигнал.','Измени ритм.','Управляй светом.','Повтори трижды.','Собери ритм.','Дай имя действию.','Поймай перегрев.','Запусти протокол.','Твоя смена.'][mission];
  document.querySelector('.workspace-head h2').textContent=free?'Собственное устройство':m.name;
@@ -349,11 +353,13 @@ function renderLesson(){
  document.querySelector('.goal p').textContent=observing?'Запусти программу, дождись двух серий и запиши наблюдение.':free?'Например, сделай мигание только при нажатой кнопке.':m.goal;
  $('check').textContent=observing?'Записать наблюдение':free?'Проверить цепь':completed.has(mission)?'✓ Пройдено · проверить ещё':'Проверить миссию';
  $('steps').replaceChildren();
- if(observing){$('lesson-content').innerHTML='<span class="step-counter">ОСМОТР УСТРОЙСТВА</span><h3>Сколько импульсов?</h3><p>Запусти исходную программу справа. Смотри на светодиод: посчитай вспышки до длинной паузы.</p><p>Для замера нужны эти провода:</p>'+connectionMarkup(ledConnections)+'<p>Если цепь осталась с прошлого дела, пересобирать её не нужно.</p><p class="tip">Код пока только для чтения. Через несколько секунд нажми «Записать наблюдение». Мы измерим реальные переключения на твоей схеме.</p>'; }
+ if(transferring){$('lesson-content').innerHTML='<span class="step-counter">ПРОВЕРКА ПЕРЕНОСА / ДЕЛО 001</span><h3>Выход изменился. Принцип остался.</h3><p>Перенеси внешнюю цепь на <b>D12</b> и согласуй с ней программу. Сохрани резистор, полярность и паузы: по 500 мс свет и темнота.</p><p class="tip">D13 не должен питать внешний LED. Редактор и схема независимы: проверь, что меняешь в каждом из них. Можно сохранить черновик и вернуться позже.</p>';document.querySelector('.goal p').textContent='Внешний LED подключён к D12 и мигает с паузами 500 мс.';document.querySelector('.workspace-head h2').textContent='Тот же маяк на D12';document.querySelector('.lesson h1').textContent='Перенеси сигнал.';$('check').textContent='Проверить перенос на D12';}
+ else if(observing){$('lesson-content').innerHTML='<span class="step-counter">ОСМОТР УСТРОЙСТВА</span><h3>Сколько импульсов?</h3><p>Запусти исходную программу справа. Смотри на светодиод: посчитай вспышки до длинной паузы.</p><p>Для замера нужны эти провода:</p>'+connectionMarkup(ledConnections)+'<p>Если цепь осталась с прошлого дела, пересобирать её не нужно.</p><p class="tip">Код пока только для чтения. Через несколько секунд нажми «Записать наблюдение». Мы измерим реальные переключения на твоей схеме.</p>'; }
  else if(free){$('lesson-content').innerHTML='<h3>Мастерская открыта</h3><p>Можно менять программу целиком. Доступны выводы <code>D13</code>, <code>D12</code>, <code>D2</code>, <code>5V</code> и <code>GND</code>.</p><p>Попробуй перенести светодиод на D12 и исправить программу. Или создай функцию, которая мигает три раза.</p><p class="tip">Поддерживаемые компоненты: один светодиод, резистор 220 Ом и кнопка. Функции объявляй перед местом вызова.</p>';}
  else if(missions[mission]?.independent){$('lesson-content').innerHTML='<span class="step-counter">САМОСТОЯТЕЛЬНАЯ СБОРКА</span><h3>Собери алгоритм из готовых команд</h3><p>В режиме «Собрать блоками» не нужно печатать код. Добавь команды в схему и расставь их по порядку: вспышка, подготовка платы, чтение входов, условие и цикл.</p><p>Реши, что вызывает тревогу: перегрев <b>ИЛИ</b> нажатие кнопки. После каждой вспышки функция ждёт 150 мс, а после цикла нужна дополнительная пауза <b>1000 мс</b>. Между сериями получится 1150 мс.</p><p class="tip">Провода подключаешь сама. После сборки нажми «Запустить», затем «Проверить миссию». Вкладка C++ доступна, если хочешь писать самостоятельно.</p>';}
  else {m.steps.forEach((s,i)=>{const b=make('button',{className:'step'+(i<=step?' active':''),title:`Шаг ${i+1}: ${s[0]}`});b.setAttribute('aria-label',b.title);b.onclick=()=>{step=i;renderLesson();};$('steps').append(b);});const [title,body,tip]=m.steps[step];$('lesson-content').innerHTML=`<span class="step-counter">ШАГ ${step+1} ИЗ ${m.steps.length}</span><h3>${title}</h3><p>${body}</p><p class="tip">${tip}</p>`;}
- $('prev').disabled=step===0||free||observing;$('next').disabled=free;$('next').textContent=observing?'Записать наблюдение':step===m.steps.length-1?'Проверить результат':'Дальше →';menu.value=String(mission);
+ if(mission===0&&!transferring&&signalExerciseRequired&&step===2&&!completed.has(0))signalExercise=createSignalExercise({mount:$('lesson-content'),saved:signalExerciseState,onChange:value=>{signalExerciseState=value;stop();queueDraftSave();},onApply:code=>{setSource(code);saveWorkshop();run();}});
+ $('prev').disabled=step===0||free||observing||transferring;$('next').disabled=free;$('next').textContent=transferring?'Проверить перенос':observing?'Записать наблюдение':step===m.steps.length-1?'Проверить результат':'Дальше →';menu.value=String(mission);
  scaffoldButton.hidden=!(missions[mission]?.independent && workbenchMode!=='observe');
  const intro=document.querySelector('.code-intro');intro.textContent=observing?'Исходная программа · только чтение. Сначала измерь сигнал, затем вернись к расследованию.':missions[mission]?.independent?'Выбери готовые команды и собери алгоритм блоками. Можно также перейти в C++.':'Редактор Arduino C++: подсветка синтаксиса, подсказки при вводе и указание ошибок.';
  document.querySelector('.code-panel').classList.toggle('code-observing',observing);queueDraftSave();
@@ -361,17 +367,20 @@ function renderLesson(){
 function loadMission(index,options={}){
  if(!Number.isInteger(index)||index<0||index>FREE)return;
  saveWorkshop();stop();restoringDraft=true;programBuilder?.destroy();programBuilder=null;showProgramMode('code');
- mission=index;workbenchMode=options.mode==='observe'&&index===3?'observe':'repair';
- const key=workbenchMode==='observe'?'3-observe':index;
+ mission=index;workbenchMode=options.mode==='observe'&&index===3?'observe':options.mode==='transfer'&&index===0?'transfer':'repair';
+ const key=workbenchMode==='observe'?'3-observe':workbenchMode==='transfer'?'0-transfer':index;
  if(options.reset)delete drafts[key];
  if(missions[index]?.independent&&!drafts[key]?.independent)delete drafts[key];
  const draft=drafts[key];
+ signalExerciseState=normalizeSignalExercise(draft?.signalExercise);signalExerciseRequired=workbenchMode==='repair'&&index===0&&(options.requireSignalExercise===true||draft?.signalExerciseRequired===true);
+ if(workbenchMode==='transfer'&&!draft&&drafts[0]){wires=drafts[0].wires.map(w=>({...w}));breadboard=drafts[0].breadboard;}
  if(!draft&&missions[index]?.independent){wires=[];breadboard=false;}
  if(!draft){temperature=25;syncTemperatureUI();}
  step=Math.min(draft?.step||0,missions[Math.min(index,FREE-1)].steps.length-1);
  if(draft){wires=draft.wires.map(w=>({...w}));breadboard=draft.breadboard;temperature=Number.isFinite(draft.temperature)?draft.temperature:25;syncTemperatureUI();}
  if(options.reset){wires=[];breadboard=false;step=0;temperature=25;syncTemperatureUI();}
  if(index<FREE)setSource(workbenchMode==='observe'?missions[index].code:draft?.code??missions[index].code);
+ if(!draft&&index>=1&&index<=2&&inspectCircuit(wires,false,breadboard).led?.source==='uno:12')setSource(missions[index].code.replace('int ledPin = 13;','int ledPin = 12;'));
  else if(draft)setSource(draft.code);
  if(missions[index]?.independent)programBuilder=createProgramBuilder({mount:programMount,kind:'arduino',saved:draft?.program,readCode:currentCode,writeCode:setSource,onMode:showProgramMode,onChange:queueDraftSave,beforeChange:stop});
  bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';
@@ -383,22 +392,22 @@ function loadMission(index,options={}){
  window.dispatchEvent(new CustomEvent('nexora:mission-change',{detail:{mission:index,name:index<FREE?missions[index].name:'Свободная мастерская'}}));
 }
 $('prev').onclick=()=>{step=Math.max(0,step-1);renderLesson();};
-$('next').onclick=()=>{if(workbenchMode==='observe'||step===missions[mission].steps.length-1)checkMission();else{step++;renderLesson();}};
+$('next').onclick=()=>{if(workbenchMode==='observe'||workbenchMode==='transfer'||step===missions[mission].steps.length-1)checkMission();else{step++;renderLesson();}};
 
 function press(value){if(testRunning)return;const button=parts.get('button').element;button.pressed=value;document.querySelector('.press-button').classList.toggle('held',value);if(sim&&running)sim.setButton(value);}
-function stop(){programBuilder?.setDisabled(false);temperatureInput.disabled=false;runId++;running=false;busy=false;testRunning=false;cancelAnimationFrame(raf);if(cancelCompile){const cancel=cancelCompile;cancelCompile=null;cancel();}else if(compileWorker){compileWorker.terminate();compileWorker=null;}parts.get('uno').element.ledPower=false;parts.get('button').element.pressed=false;document.querySelector('.press-button').classList.remove('held');sim=null;setLight({led:false,led13:false});$('run').disabled=false;$('run').textContent='▶ Запустить';$('stop').disabled=true;$('runtime-status').textContent='Остановлено';$('check').disabled=false;menu.disabled=false;setCodeEditable(workbenchMode!=='observe');}
+function stop(){signalExercise?.setDisabled(false);programBuilder?.setDisabled(false);temperatureInput.disabled=false;runId++;running=false;busy=false;testRunning=false;cancelAnimationFrame(raf);if(cancelCompile){const cancel=cancelCompile;cancelCompile=null;cancel();}else if(compileWorker){compileWorker.terminate();compileWorker=null;}parts.get('uno').element.ledPower=false;parts.get('button').element.pressed=false;document.querySelector('.press-button').classList.remove('held');sim=null;setLight({led:false,led13:false});$('run').disabled=false;$('run').textContent='▶ Запустить';$('stop').disabled=true;$('runtime-status').textContent='Остановлено';$('check').disabled=false;menu.disabled=false;setCodeEditable(workbenchMode!=='observe');}
 function compileSource(source){return new Promise((resolve,reject)=>{const worker=new Worker(new URL('avr/worker.js',document.baseURI),{type:'module'});compileWorker=worker;const timeout=setTimeout(()=>{worker.terminate();if(compileWorker===worker)compileWorker=null;reject(new Error('Компилятор не ответил за 3 минуты. Обнови страницу и попробуй ещё раз.'));},180000);const cleanup=()=>{clearTimeout(timeout);worker.terminate();if(compileWorker===worker){compileWorker=null;cancelCompile=null;}};cancelCompile=()=>{cleanup();reject(new Error('Компиляция остановлена'));};worker.onmessage=e=>{cleanup();e.data.ok?resolve(e.data.result):reject(new Error(e.data.error?.message||'Не удалось скомпилировать программу'));};worker.onerror=e=>{cleanup();reject(new Error(e.message||'Не удалось загрузить компилятор'));};worker.postMessage({source:'#include <Arduino.h>\n#line 1 "sketch.ino"\n'+source,sensors:[],assetsBase:new URL('avr/',document.baseURI).href});});}
 async function run(){
  stop();const blockIssue=programBuilder?.problem();if(blockIssue){feedback(blockIssue,'error');log(blockIssue);return;}
  const id=runId,source=currentCode();compileDiags=[];showCodeDiagnostics(analyzeSketch(source));
  const circuit=inspectCircuit(wires,false,breadboard);
- busy=true;programBuilder?.setDisabled(true);$('run').disabled=true;$('run').textContent='Собираю программу…';$('stop').disabled=false;$('check').disabled=true;$('runtime-status').textContent='Компиляция';
+ busy=true;signalExercise?.setDisabled(true);programBuilder?.setDisabled(true);$('run').disabled=true;$('run').textContent='Собираю программу…';$('stop').disabled=false;$('check').disabled=true;$('runtime-status').textContent='Компиляция';
  feedback('Собираю программу. После компиляции плата запустится автоматически.');
  log('Компиляция Arduino C++…\nПри первом запуске загружаются инструменты (~18 МБ и файлы Arduino).');
  try{
    let result;if(lastHex&&lastSource===source)result={hex:lastHex,fitsTarget:true};else result=await compileSource(source);
    if(id!==runId)return;if(!result.fitsTarget)throw new Error('Программа не помещается в память Arduino Uno.');lastHex=result.hex;lastSource=source;
-   busy=false;programBuilder?.setDisabled(false);serialText='';let faultMessage=null;
+   busy=false;signalExercise?.setDisabled(false);programBuilder?.setDisabled(false);serialText='';let faultMessage=null;
    sim=new Emulator(result.hex,wires.map(w=>({...w})),{breadboard,temperature,onChange:setLight,onSerial:char=>{serialText=(serialText+char).slice(-3000);},onFault:message=>{faultMessage=message;}});
    running=true;$('run').textContent='▶ Выполняется';$('run').disabled=true;$('check').disabled=false;$('runtime-status').textContent='Программа работает';parts.get('uno').element.ledPower=true;
    log('Программа скомпилирована.\nВыполняется на виртуальном ATmega328P.');feedback(missions[mission]?.independent?(circuit.led?'Программа запущена. Проверь поведение устройства.':'Программа запущена. Светодиод не образует рабочую цепь.'):circuit.reason,circuit.led?'success':'');window.dispatchEvent(new CustomEvent('nexora:program-run',{detail:{mission,hasCircuit:Boolean(circuit.led)}}));
@@ -412,15 +421,18 @@ $('run').onclick=run;$('stop').onclick=()=>{stop();feedback('Программа 
 
 async function checkMission(){
  if(testRunning||busy)return;
+ if(mission===0&&workbenchMode!=='transfer'&&signalExerciseRequired&&!completed.has(0)&&!signalExerciseState.applied){step=2;renderLesson();feedback('Сначала собери фрагмент из готовых строк и испытай его на плате. После этого можно редактировать C++ самостоятельно.');return;}
  const circuit=inspectCircuit(wires,false,breadboard);
  if(mission===FREE){feedback(circuit.reason,circuit.led?'success':'error');return;}
  if(!circuit.led||circuit.error){feedback(missions[mission]?.independent?'Проверка схемы не пройдена: проверь замкнутость цепи, полярность и наличие резистора.':circuit.reason,'error');return;}
  if(!running||!sim){feedback('Сначала запусти программу и дай устройству поработать.');return;}
  if(mission<2){
+   if(workbenchMode==='transfer'&&circuit.led.source!=='uno:12'){feedback('Маяк пока использует другой вывод. Для этой проверки внешний LED должен получать сигнал от D12.','error');return;}
    const changes=sim.transitions;if(changes.length<5){feedback('Пока недостаточно переключений. Подожди несколько миганий и проверь снова.');return;}
    const intervals=changes.slice(-5).slice(1).map((x,i)=>x.time-changes.slice(-5)[i].time),target=mission===0?.5:.25;
    if(!intervals.every(t=>Math.abs(t-target)<.025)){feedback(`Светодиод переключается, но ритм отличается от задания. Каждое состояние должно длиться ${target*1000} мс. Проверь delay().`,'error');return;}
    if(mission===1&&(!/\bint\s+pauseMs\s*=/.test(currentCode())||(currentCode().match(/delay\s*\(\s*pauseMs\s*\)/g)||[]).length<2)){feedback('Ритм правильный. В этой миссии также создай переменную int pauseMs и используй её для обеих пауз.');return;}
+   if(workbenchMode==='transfer'){saveWorkshop();feedback('Перенос пройден: реальные переключения внешнего LED на D12 по 500 мс.','success');window.dispatchEvent(new CustomEvent('nexora:transfer-complete'));return;}
    complete();return;
  }
  if(mission===6||mission===7||mission===8){

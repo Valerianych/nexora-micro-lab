@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {normalizeCaseOne,diagnosisComplete,normalizeSignalExercise,buildSignalSketch,signalPreview} from './case-one.js';
+import {restoreGame,restoreWorkshop,caseSnapshot,clearWorkshop} from './progress.js';
+
+assert.equal(diagnosisComplete(normalizeCaseOne({checks:['power','program'],verdict:'circuit'})),false);
+assert.deepEqual(normalizeCaseOne({checks:['power','power','constructor','__proto__','missing']}).checks,['power']);
+const diagnosed=normalizeCaseOne({checks:['program','circuit','power'],selected:'power',verdict:'circuit'});
+assert.ok(diagnosisComplete(diagnosed));assert.equal(diagnosed.transferDone,false);
+assert.equal(normalizeCaseOne(undefined,{legacyComplete:true}).transferDone,true);
+const exercise={setup:'OUTPUT',lines:['high','wait500','low','wait500'],applied:true};
+assert.match(buildSignalSketch(exercise),/pinMode\(ledPin, OUTPUT\)/);
+assert.deepEqual(signalPreview(exercise).segments,[{on:true,start:0,duration:500},{on:false,start:500,duration:500}]);
+assert.equal(buildSignalSketch({setup:'OUTPUT',lines:['high']}),null);
+assert.deepEqual(normalizeSignalExercise({setup:'evil',lines:['constructor','high']}),{setup:'',lines:['','high','',''],applied:false});
+assert.deepEqual(signalPreview({...exercise,setup:'INPUT'}).segments.map(s=>s.on),[false,false]);
+assert.equal(signalPreview({...exercise,lines:['high','wait500','high','wait500']}).segments.every(s=>s.on),true);
+const saved=restoreGame({started:true,activeCase:'001',completed:[0],caseOne:diagnosed,view:'workbench',workbenchIndex:0,workbenchMode:'transfer'});
+assert.equal(saved.workbenchMode,'transfer');assert.equal(saved.caseOne.transferDone,false);
+assert.deepEqual(caseSnapshot(saved).caseOne,diagnosed);
+assert.equal(restoreGame({activeCase:'001',completed:[0]}).caseOne.transferDone,true);
+const drafts={0:{code:'first',wires:[],signalExercise:exercise,signalExerciseRequired:true},'0-transfer':{code:'transfer student draft',wires:[{a:'uno:12',b:'led:A'}]},3:{code:'other',wires:[]}};
+const restored=restoreWorkshop({drafts,activeIndex:0,mode:'transfer',completed:[0]},new Set(['uno:12','led:A']),9);
+assert.equal(restored.mode,'transfer');assert.equal(restored.drafts['0-transfer'].code,'transfer student draft');
+assert.deepEqual(restored.drafts[0].signalExercise,exercise);
+const cleaned=clearWorkshop({...restored,completed:[...restored.completed]},[0,1,2]);assert.deepEqual(Object.keys(cleaned.drafts),['3']);assert.deepEqual(cleaned.completed,[]);
+console.log('PASS diagnosis evidence, legacy saves, code construction/preview, transfer draft isolation, case snapshots and replay cleanup.');
