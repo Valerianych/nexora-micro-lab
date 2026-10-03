@@ -569,3 +569,68 @@ header,.code-panel{color:#22364b}
 #esp-workbench .esp-terminal-leads{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 @media(min-width:1501px){#esp-workbench:not(.is-independent) .esp-layout{grid-template-columns:250px minmax(0,1fr) 405px}}
 @media(max-width:1150px) and (min-width:781px){#esp-workbench .esp-layout{grid-template-columns:minmax(0,1fr) 380px}}
+
+/* Introductory electricity lab: local vector diagrams, immediate observations. */
+.electricity-school{box-sizing:border-box;width:min(1120px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:0;border:1px solid #496273;border-radius:18px;background:#142331;color:#e6edf0;box-shadow:0 25px 90px #0007;overflow:auto}
+.electricity-school::backdrop{background:#08121cbd;backdrop-filter:blur(5px)}
+.electricity-school button{font:inherit;cursor:pointer;background:#233b4c;color:#eff5f7;border:1px solid #638094;border-radius:8px;padding:11px 13px;line-height:1.4;text-align:left;opacity:1;transition:background .12s,border-color .12s}
+.electricity-school button:hover:not(:disabled){background:#345267;border-color:#a6c4d5}
+.electricity-school button:focus-visible,.electricity-school a:focus-visible{outline:3px solid #c8f36b;outline-offset:3px}
+.electricity-school button:disabled{cursor:default;background:#1b2e3d;color:#a5b7c3;border-color:#3d5668;opacity:1}
+.electricity-school .electric-run,.electricity-school .electric-next:not(:disabled){background:#c8f36b;color:#1a2b16;border-color:#c8f36b;font-weight:700}
+.electricity-school .electric-run:hover,.electricity-school .electric-next:hover:not(:disabled){background:#d8ff88;border-color:#d8ff88}
+.electric-header{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:26px 28px 18px;height:auto;min-height:0;background:#142331;color:#e6edf0;border:0}
+.electric-eyebrow{font:11px/1.5 monospace;letter-spacing:1.5px;color:#badd81}
+.electric-header h2{font-size:28px;line-height:1.2;letter-spacing:-.5px;color:#f3f7fa;margin:7px 0 0}
+.electricity-school .electric-close{padding:2px 12px;font-size:28px;flex-shrink:0;line-height:1.4}
+.electric-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:0 28px 22px;border-bottom:1px solid #345062}
+.electric-nav button{display:flex;align-items:center;gap:9px;font-size:12px;min-width:0}
+.electric-nav button span{display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:#101f2c;color:#d7e8ef}
+.electric-nav button[aria-current="step"]{border-color:#c8f36b;color:#d9f3b4;background:#294333}
+.electric-nav button[aria-current="step"] span{background:#c8f36b;color:#1a2b16}
+.electric-body{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:27px;padding:24px 28px 28px}
+.electric-lab{min-width:0}.electric-lab h3{font-size:25px;margin:7px 0 10px;color:#f6f8fa;line-height:1.3}
+.electric-mission{color:#bacdd8;font-size:15px;line-height:1.55;margin:0 0 15px}
+.electric-circuit{background:#0d1c28;border:1px solid #375363;border-radius:12px;overflow:hidden;margin-bottom:18px}
+.electric-circuit svg{display:block;width:100%;height:auto}
+.electric-circuit .electric-wire{fill:none;stroke:#778d9a;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.electric-circuit .electric-flow{fill:none;stroke:#c8f36b;stroke-width:3;stroke-dasharray:8 12;opacity:0}
+.electric-circuit.is-on .electric-flow,.electric-circuit.is-blinking .electric-flow{opacity:1;animation:electric-flow 1.2s linear infinite}
+.electric-circuit .electric-gap{fill:none;stroke:#ecb978;stroke-width:3;stroke-dasharray:3 6}
+.electric-circuit .electric-contact{fill:#0d1c28;stroke:#e0edf0;stroke-width:3}
+.electric-circuit .electric-led{fill:#274939;stroke:#aecab9;stroke-width:2}
+.electric-circuit.is-on .electric-led,.electric-circuit.is-blinking .electric-led{fill:#c8f36b;filter:drop-shadow(0 0 10px #b6ff67)}
+.electric-circuit .electric-light-rays{fill:none;stroke:#c8f36b;stroke-width:2.5;opacity:0}
+.electric-circuit.is-on .electric-light-rays,.electric-circuit.is-blinking .electric-light-rays{opacity:1}
+.electric-circuit.is-blinking .electric-led,.electric-circuit.is-blinking .electric-light-rays{animation:electric-blink 1s step-end infinite}
+.electric-circuit.is-unsafe .electric-led{fill:#e6a35f;stroke:#ffd8af}.electric-circuit.is-unsafe .electric-reading{fill:#ffd093}
+.electric-circuit .electric-label{fill:#c5d7e1;font:17px sans-serif}
+.electric-circuit .electric-contact-label{fill:#eff5f6;font:700 17px monospace}
+.electric-circuit .electric-board-title{fill:#f7fbff;font:700 25px sans-serif}
+.electric-circuit .electric-board-sub{fill:#e7f1f5;font:14px sans-serif}
+.electric-circuit .electric-reading{fill:#c8f36b;font:700 19px monospace}
+.electric-diagram-caption{padding:10px 14px;font-size:12px;line-height:1.5;color:#b8ceda;border-top:1px solid #304958}
+.electricity-school fieldset{margin:0 0 14px;padding:0;border:0;min-width:0}
+.electricity-school legend{float:none;width:auto;margin:0 0 8px;color:#dce8ee;font-size:14px;font-weight:600;line-height:1.5}
+.electric-options{display:flex;gap:7px;flex-wrap:wrap}.electric-options button{font-size:13px;flex:1 1 auto;text-align:center}
+.electric-options button[aria-pressed="true"]{background:#274b40;color:#e7ffc4;border-color:#b4dd75}
+.electric-run{margin:2px 0 14px}.electric-observation{padding:14px 16px;background:#1c3442;border-left:3px solid #9fc974;border-radius:0 8px 8px 0;font-size:14px;line-height:1.6;color:#dce8ef;min-height:64px}
+.electric-observation b{color:#e9f5cf;display:block;font-size:15px}.electric-observation p{margin:6px 0 0}
+.electric-investigation{border-left:1px solid #375062;padding-left:23px;min-width:0}
+.electric-evidence{list-style:none;padding:0;margin:12px 0 7px}.electric-evidence li{display:flex;gap:10px;align-items:center;color:#bbcbd5;font-size:13px;padding:8px 0;border-bottom:1px solid #2d4555}
+.electric-evidence li span{color:#9fb3bf;font:18px monospace}.electric-evidence li.observed{color:#dfefcd}.electric-evidence li.observed span{color:#c8f36b}
+.electric-evidence-note{color:#9eb9cb;font-size:12px;line-height:1.6;margin:9px 0 20px}
+.electric-question button{display:block;width:100%;margin:0 0 8px;font-size:13px}.electric-question button.correct{background:#274b40;color:#e7ffc4;border-color:#b4dd75}
+.electric-answer-feedback{font-size:13px;line-height:1.65;color:#dce8ef;margin:12px 0 15px;overflow-wrap:break-word}.electric-answer-feedback b{color:#d3f096}
+.electric-next{width:100%;margin-top:7px;text-align:center!important;font-size:13px!important}
+.electric-assumptions{margin:12px 0 18px;font-size:12px;line-height:1.6;color:#b8cbd5}.electric-assumptions summary{color:#dde9ef;cursor:pointer}.electric-assumptions p{margin:7px 0}
+.electric-code{padding:13px 15px;background:#0b1a27;border:1px solid #35576d;border-radius:9px;margin-bottom:16px}.electric-code>span{display:block;color:#93adbe;font-size:11px;margin-bottom:9px}.electric-code code{color:#d3e4f0;font:13px/1.7 monospace}.electric-code b{color:#c39ced}.electric-code em{color:#f2bf83;font-style:normal}.electric-code strong{color:#88d5d2;font-weight:400}
+.electric-phases{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.electric-phases span{background:#0e2433;padding:7px 10px;border-radius:6px;font:12px monospace;color:#dae7ec}.electric-phases i{display:inline-block;width:9px;height:9px;border:1px solid #a7c6b6;border-radius:50%;background:#234237}.electric-phases i.lit{background:#c8f36b;box-shadow:0 0 7px #c8f36b}
+.electric-summary{max-width:710px;padding:34px 28px 30px;margin:auto}.electric-summary-badge{display:grid;place-items:center;width:52px;height:52px;background:#c8f36b;color:#1a2b16;border-radius:50%;font-size:30px}
+.electric-summary h3{font-size:27px;color:#f4f8fb;line-height:1.3;margin:20px 0 12px}.electric-summary p,.electric-summary li{font-size:15px;line-height:1.7;color:#c3d6e0}.electric-summary li{margin:8px 0}.electric-summary ul{padding-left:21px}.electric-summary .electric-transfer{padding:13px 16px;background:#203a42;border-left:3px solid #c8f36b}
+.electric-footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 28px;background:#0f1f2d;color:#9db8cb;font-size:11px;line-height:1.5}.electric-footer a{color:#d0ef9b;text-decoration:underline}
+.first-circuit-hint{margin-top:16px;padding:12px;background:#243747;border:1px solid #52697e;border-radius:7px}.first-circuit-hint summary{cursor:pointer;color:#d3ecaa;font-size:13px;line-height:1.5}.first-circuit-hint p{font-size:13px;color:#d7e3e9}
+@keyframes electric-flow{to{stroke-dashoffset:-40}}@keyframes electric-blink{50%{fill:#274939;filter:none;opacity:.7}}
+@media(max-width:960px){.electric-body{grid-template-columns:minmax(0,1fr) 265px;gap:18px}.electric-investigation{padding-left:17px}.electric-nav button{font-size:11px;padding:9px}.header-actions{flex-wrap:wrap}#site-header{height:auto;min-height:72px}}
+@media(max-width:700px){.electricity-school{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:12px}.electric-header{padding:19px 16px 15px}.electric-header h2{font-size:23px}.electric-eyebrow{font-size:10px}.electric-nav{padding:0 16px 17px;grid-template-columns:repeat(2,minmax(0,1fr))}.electric-nav button{font-size:11px}.electric-body{grid-template-columns:1fr;padding:20px 16px;gap:23px}.electric-investigation{border-left:0;border-top:1px solid #375062;padding:20px 0 0}.electric-lab h3{font-size:23px}.electric-circuit .electric-label,.electric-circuit .electric-contact-label{font-size:23px}.electric-circuit .electric-reading{font-size:23px}.electric-options button{padding:10px 8px}.electric-observation{font-size:14px}.electric-summary{padding:24px 16px}.electric-summary h3{font-size:24px}.electric-footer{padding:13px 16px}.electric-run{width:100%;text-align:center!important}.electric-question button{font-size:14px}}
+@media(prefers-reduced-motion:reduce){.electric-circuit .electric-flow,.electric-circuit.is-blinking .electric-led,.electric-circuit.is-blinking .electric-light-rays{animation:none!important}.electricity-school button{transition:none}}

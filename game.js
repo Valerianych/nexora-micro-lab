@@ -3,7 +3,9 @@ import {CASE_MISSIONS, extraCases} from './case-stories.js';
 import {modelMarkup, bindModel} from './case-models.js';
 import {loopTrace} from './case-two.js';
 import {createImageCache, createSceneGate, artSource} from './story-media.js';
+import {createElectricitySchool} from './electricity-school.js';
 const $ = (id) => document.getElementById(id);
+const electricitySchool = createElectricitySchool({saved:readProgress().electricity,onChange:value=>writeProgress('electricity',value)});
 
 const initialState = () => ({
   started: false,
@@ -436,6 +438,7 @@ function beginCase(id, {replay=false}={}) {
   resetCaseProgress();
   if(replay){
     delete state.caseSaves[id];
+    if(id==='001')electricitySchool.reset();
     if(window.nexoraWorkshop?.resetProgress)window.nexoraWorkshop.resetProgress(CASE_MISSIONS[id]);
     else writeProgress('workshop',clearWorkshop(readProgress().workshop,CASE_MISSIONS[id]));
   } else if(saved){
@@ -698,7 +701,8 @@ function renderWorkshop() {
     return;
   }
   if (state.tookResistor) {
-    renderStoryBeat({ room: 'workshop', location: 'МАСТЕРСКАЯ · 08:55', status: 'ДЕТАЛЬ В ИНВЕНТАРЕ', frame: 'taken', kicker: 'ЭПИЗОД 01 / СБОРКА', title: 'Деталь у тебя. Можно собирать.', text: 'Резистор 220 Ом получен. Соедини его последовательно со светодиодом и запусти первую программу.', actionLabel: 'Открыть верстак →', action: () => openWorkbench(0), voice: '«На верстаке будут схема, подсказка по проводам и редактор Arduino-кода».' });
+    const needsLesson=!electricitySchool.isComplete();
+    renderStoryBeat({ room: 'workshop', location: 'МАСТЕРСКАЯ · 08:55', status: 'ДЕТАЛЬ В ИНВЕНТАРЕ', frame: 'taken', kicker: 'ЭПИЗОД 01 / СБОРКА', title: needsLesson?'Почему маяк не светится?':'Деталь у тебя. Можно собирать.', text: needsLesson?'Резистор 220 Ом получен. Перед ремонтом проверь четыре гипотезы: куда идёт ток, как включить LED, зачем сопротивление и какой контакт слушает программу.':'Теперь восстанови замкнутый путь тока и выбери соединения сама. Программа уже готова: нужно вернуть ей работающий светодиод.', actionLabel: needsLesson?'Разобраться вместе с Маей →':'Открыть верстак →', action: () => openWorkbench(0), voice: needsLesson?'«Готовый список проводов легко повторить. Но я хочу, чтобы ты могла объяснить каждое соединение. Здесь можно ошибаться и проверять свои идеи».':'«Резистор можно поставить и перед LED, и после него. Важно, чтобы ток проходил через оба компонента».' });
   } else if (state.inspectedResistor) {
     renderStoryBeat({ room: 'workshop', location: 'МАСТЕРСКАЯ · 08:53', status: 'РЕЗИСТОР НАЙДЕН', frame: 'resistor', kicker: 'ЭПИЗОД 01 / ДЕТАЛЬ', title: 'Маленькая деталь с важной задачей.', text: 'Под журналом лежит резистор 220 Ом. Он ограничивает ток и защищает светодиод от перегрузки.', actionLabel: 'Взять резистор →', action: takeResistor, voice: '«Резистор — не украшение. В цепи он должен стоять последовательно со светодиодом».' });
   } else {
@@ -861,6 +865,11 @@ function enterRoom(room) {
 }
 
 function openWorkbench(index, options = {mode:'repair'}) {
+  if(index===0&&state.activeCase==='001'&&!state.completed.has(0)&&!electricitySchool.isComplete()){
+    state.view='story';saveGame();
+    electricitySchool.open({onComplete:()=>openWorkbench(index,options)});
+    return;
+  }
   sceneGate.cancel();
   state.view = 'workbench'; state.workbenchIndex = index; state.workbenchMode = options.mode || 'repair';
   saveGame();
@@ -905,6 +914,7 @@ function resetCase() {
   dismissCaseReveal();$('archive-modal').close();$('report-modal').close();
   resetCaseProgress();
   window.nexoraWorkshop?.resetProgress?.();
+  electricitySchool.close();electricitySchool.reset();
   Object.assign(state,initialState());
   clearProgress();
   document.body.classList.remove('game-started','workbench-open');
@@ -1069,6 +1079,7 @@ comicIntro?.addEventListener('click', (event) => {
 $('inspect-object').onclick = inspectPanel;
 $('return-quest').onclick = () => { state.view = 'story'; if (workbenchWaitTimer) { clearInterval(workbenchWaitTimer); workbenchWaitTimer = null; } window.nexoraWorkshop?.close?.(); document.body.classList.remove('workbench-open'); renderRoom(); };
 $('progress-settings').onclick=()=>showResetDialog();
+$('electricity-open').onclick=()=>electricitySchool.open();
 $('close-reset').onclick=()=>$('reset-modal').close();
 $('confirm-reset-all').onclick=()=>{$('reset-modal').close();resetCase();};
 $('cancel-reset-all').onclick=()=>{$('reset-all-confirm').hidden=true;};
@@ -1080,8 +1091,8 @@ $('close-archive').onclick = () => { $('archive-modal')?.close(); };
 $('archive-modal')?.addEventListener('click', (event) => { if (event.target === $('archive-modal')) $('archive-modal').close(); });
 $('about').onclick = () => $('modal').showModal();
 $('close-modal').onclick = () => $('modal').close();
-document.addEventListener('keydown', (event) => { if (event.key.toLowerCase() === 'j' && !event.ctrlKey && !event.metaKey && !event.target.closest('textarea, input, [contenteditable="true"], .cm-editor')) $('case-drawer').hidden = !$('case-drawer').hidden; });
-document.addEventListener('keydown', (event) => { if ((event.key === ' ' || event.key === 'Enter') && state.started && !state.introDone && !event.target.closest('button, a, textarea, input, [contenteditable="true"], .cm-editor')) { event.preventDefault(); advanceIntro(); } });
+document.addEventListener('keydown', (event) => { if (event.key.toLowerCase() === 'j' && !event.ctrlKey && !event.metaKey && !event.target.closest('#electricity-school, textarea, input, [contenteditable="true"], .cm-editor')) $('case-drawer').hidden = !$('case-drawer').hidden; });
+document.addEventListener('keydown', (event) => { if ((event.key === ' ' || event.key === 'Enter') && state.started && !state.introDone && !event.target.closest('#electricity-school, button, a, textarea, input, [contenteditable="true"], .cm-editor')) { event.preventDefault(); advanceIntro(); } });
 
 window.addEventListener('nexora:mission-complete', (event) => {
   const mission = event.detail?.mission;

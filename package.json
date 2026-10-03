@@ -11,7 +11,9 @@
     "check:career": "node verify-career.mjs",
     "check:career-browser": "node verify-career-browser.mjs",
     "check:blocks": "node verify-program-blocks.mjs",
-    "check:esp-learning": "node verify-esp-learning.mjs"
+    "check:esp-learning": "node verify-esp-learning.mjs",
+    "check:electricity": "node verify-electricity.mjs",
+    "check:electricity-browser": "node verify-electricity-browser.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
