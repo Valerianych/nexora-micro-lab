@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -20,6 +21,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -32,6 +34,46 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      - name: Wait for branch-based Pages publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          const {GITHUB_REPOSITORY, GITHUB_SHA, GH_TOKEN} = process.env;
+          const api = async path => {
+            const response = await fetch('https://api.github.com' + path, {
+              headers: {
+                accept: 'application/vnd.github+json',
+                authorization: 'Bearer ' + GH_TOKEN,
+                'x-github-api-version': '2022-11-28',
+              },
+            });
+            if (!response.ok) throw new Error('GitHub API returned ' + response.status);
+            return response.json();
+          };
+          const site = await api('/repos/' + GITHUB_REPOSITORY + '/pages');
+          if (site.build_type === 'workflow') {
+            console.log('GitHub Pages uses workflow publishing; no branch build to wait for.');
+          } else {
+            // Legacy branch publishing can finish after this workflow and replace the
+            // game with the repository README. Always deploy dist after that run.
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (true) {
+              const result = await api('/repos/' + GITHUB_REPOSITORY + '/actions/runs?head_sha=' + GITHUB_SHA + '&per_page=100');
+              const branchRuns = result.workflow_runs.filter(run =>
+                run.head_sha === GITHUB_SHA &&
+                run.path === 'dynamic/pages/pages-build-deployment'
+              );
+              if (branchRuns.length && branchRuns.every(run => run.status === 'completed')) {
+                console.log('Branch-based Pages publishing finished. Deploying the game from dist.');
+                break;
+              }
+              if (Date.now() >= deadline) throw new Error('Timed out waiting for branch-based Pages publishing.');
+              console.log('Waiting for branch-based Pages publishing to finish...');
+              await new Promise(resolve => setTimeout(resolve, 10000));
+            }
+          }
+          NODE
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
