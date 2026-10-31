@@ -11,8 +11,7 @@ import {matchesAlarmPattern,alarmTimingHint} from './alarm-timing.js';
 import {componentNames,pinLabel,displayPin,pinDescription,connectionMarkup,ledConnections} from './circuit-labels.js';
 import {readProgress, writeProgress, restoreWorkshop, clearWorkshop} from './progress.js';
 import {analyzeSiren} from './case-two.js';
-import {normalizeSignalExercise,buildSignalSketch,previewSignalSketch,isSignalSketchSource} from './case-one.js';
-import {createSignalExercise} from './signal-exercise.js';
+import {restoreEditableFirstSketch} from './case-one.js';
 import {arduinoWords,serialWords,analyzeSketch,compilerDiagnostics,sketchSymbols} from './arduino-language.js';
 import {Compartment,EditorState} from '@codemirror/state';
 import {EditorView,drawSelection,highlightActiveLine,keymap,lineNumbers,highlightSpecialChars,placeholder} from '@codemirror/view';
@@ -32,14 +31,13 @@ let breadboard=false;
 let workbenchMode='repair',drafts={},savingReady=false,restoringDraft=false,draftSaveTimer;
 let temperature=25;
 let programBuilder=null;
-let signalExercise=null,signalExerciseState=normalizeSignalExercise(),signalExerciseRequired=false,signalView='commands';
 let layoutReady=false,layoutWidth=0;
 const sensorPins=[{name:'VCC',x:16,y:14},{name:'GND',x:16,y:58},{name:'OUT',x:105,y:36}];
 function saveWorkshop(){
   clearTimeout(draftSaveTimer);
   if(!savingReady||restoringDraft)return;
   const key=workbenchMode==='observe'?'3-observe':workbenchMode==='transfer'?'0-transfer':mission;
-  drafts[key]={independent:missions[mission]?.independent===true,code:currentCode(),program:programBuilder?.snapshot(),signalExercise:signalExerciseState,signalExerciseRequired,wires:wires.map(w=>({...w})),breadboard,temperature,step,positions:layoutReady?capturePositions():drafts[key]?.positions,canvasWidth:layoutWidth||drafts[key]?.canvasWidth};
+  drafts[key]={independent:missions[mission]?.independent===true,code:currentCode(),program:programBuilder?.snapshot(),wires:wires.map(w=>({...w})),breadboard,temperature,step,positions:layoutReady?capturePositions():drafts[key]?.positions,canvasWidth:layoutWidth||drafts[key]?.canvasWidth};
   writeProgress('workshop',{drafts,completed:[...completed],activeIndex:mission,mode:workbenchMode});
 }
 function queueDraftSave(){if(!savingReady||restoringDraft)return;clearTimeout(draftSaveTimer);draftSaveTimer=setTimeout(saveWorkshop,180);}
@@ -73,24 +71,6 @@ scaffoldButton.onclick=()=>{
   feedback('Каркас вставлен. Заполни TODO по порядку, затем запусти программу.','success');
 };
 const programMount=make('div',{id:'program-builder-mount'});codeMount.before(programMount);
-
-const signalTools=make('div',{id:'signal-program-tools',className:'signal-program-tools',hidden:true});
-signalTools.innerHTML='<div class="signal-program-tabs" role="tablist" aria-label="Представление одной программы"><button type="button" role="tab" id="signal-tab-commands" data-signal-view="commands" aria-controls="signal-program-commands">Собрать команды</button><button type="button" role="tab" id="signal-tab-code" data-signal-view="code" aria-controls="code-editor">Посмотреть C++</button></div><div id="signal-program-commands" role="tabpanel" aria-labelledby="signal-tab-commands"></div>';
-codeMount.before(signalTools);const signalMount=signalTools.querySelector('#signal-program-commands');
-function firstProgramActive(){return mission===0&&workbenchMode==='repair'&&signalExerciseRequired&&!completed.has(0);}
-function syncFirstProgram(){
-  const active=firstProgramActive(),commands=active&&signalView==='commands';
-  signalTools.hidden=!active;signalMount.hidden=!commands;
-  if(active){codeMount.hidden=commands;$('code-hints').hidden=true;document.querySelector('.code-toolbar').hidden=true;}
-  for(const tab of signalTools.querySelectorAll('[data-signal-view]')){const selected=tab.dataset.signalView===signalView;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;tab.disabled=busy||testRunning;}
-  document.querySelector('.code-panel').classList.toggle('first-program-active',active);
-  document.querySelector('.code-head>span').textContent=active?'Одна программа':'Arduino C++ · sketch.ino';
-  if(active&&!busy&&!running&&!testRunning)$('run').disabled=!buildSignalSketch(signalExerciseState);
-  setCodeEditable(workbenchMode!=='observe');
-  if(active&&signalView==='code')requestAnimationFrame(()=>codeView?.requestMeasure());
-}
-signalTools.addEventListener('click',event=>{const tab=event.target.closest('[data-signal-view]');if(!tab||tab.disabled)return;signalView=tab.dataset.signalView;syncFirstProgram();});
-signalTools.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();signalView=signalView==='commands'?'code':'commands';syncFirstProgram();signalTools.querySelector('[aria-selected="true"]').focus();});
 
 function showProgramMode(mode){
   const blocks=mode==='blocks';
@@ -153,7 +133,6 @@ function showCodeDiagnostics(diagnostics){
   if(codeView)codeView.dispatch({effects:setDiagnosticsEffect.of(diagnostics)});
 }
 function setCodeEditable(value){
-  value=value&&!firstProgramActive();
   codeField.readOnly=!value;
   if(codeView)codeView.dispatch({effects:codeEditable.reconfigure(EditorView.editable.of(value))});
 }
@@ -362,7 +341,6 @@ $('undo').onclick=()=>{if(testRunning||busy)return;stop();wires.pop();renderWire
 $('reset').onclick=()=>{if(!window.confirm('Сбросить программу и провода текущего задания?'))return;loadMission(mission,{mode:workbenchMode,reset:true});};
 
 function renderLesson(){
- signalExercise?.destroy();signalExercise=null;
  document.body.classList.toggle('independent-workbench',Boolean(missions[mission]?.independent));
  document.querySelectorAll('.pin[data-pin]').forEach(button=>{button.title=displayPin(button.dataset.pin)+(missions[mission]?.independent?'':'. '+pinDescription(button.dataset.pin));});
  const sensorVisible=mission>=6; sensorControl.hidden=!sensorVisible; const sensorPart=parts.get('sensor'); if(sensorPart) sensorPart.part.hidden=!sensorVisible;
@@ -378,13 +356,10 @@ function renderLesson(){
  else if(observing){$('lesson-content').innerHTML='<span class="step-counter">ОСМОТР УСТРОЙСТВА</span><h3>Сколько импульсов?</h3><p>Запусти исходную программу справа. Смотри на светодиод: посчитай вспышки до длинной паузы.</p><p>Для замера нужны эти провода:</p>'+connectionMarkup(ledConnections)+'<p>Если цепь осталась с прошлого дела, пересобирать её не нужно.</p><p class="tip">Код пока только для чтения. Через несколько секунд нажми «Записать наблюдение». Мы измерим реальные переключения на твоей схеме.</p>'; }
  else if(free){$('lesson-content').innerHTML='<h3>Мастерская открыта</h3><p>Можно менять программу целиком. Доступны выводы <code>D13</code>, <code>D12</code>, <code>D2</code>, <code>5V</code> и <code>GND</code>.</p><p>Попробуй перенести светодиод на D12 и исправить программу. Или создай функцию, которая мигает три раза.</p><p class="tip">Поддерживаемые компоненты: один светодиод, резистор 220 Ом и кнопка. Функции объявляй перед местом вызова.</p>';}
  else if(missions[mission]?.independent){$('lesson-content').innerHTML='<span class="step-counter">САМОСТОЯТЕЛЬНАЯ СБОРКА</span><h3>Собери алгоритм из готовых команд</h3><p>В режиме «Собрать блоками» не нужно печатать код. Добавь команды в схему и расставь их по порядку: вспышка, подготовка платы, чтение входов, условие и цикл.</p><p>Реши, что вызывает тревогу: перегрев <b>ИЛИ</b> нажатие кнопки. После каждой вспышки функция ждёт 150 мс, а после цикла нужна дополнительная пауза <b>1000 мс</b>. Между сериями получится 1150 мс.</p><p class="tip">Провода подключаешь сама. После сборки нажми «Запустить», затем «Проверить миссию». Вкладка C++ доступна, если хочешь писать самостоятельно.</p>';}
- else {m.steps.forEach((s,i)=>{const b=make('button',{className:'step'+(i<=step?' active':''),title:`Шаг ${i+1}: ${s[0]}`});b.setAttribute('aria-label',b.title);b.onclick=()=>{step=i;renderLesson();};$('steps').append(b);});const [title,body,tip]=m.steps[step];$('lesson-content').innerHTML=`<span class="step-counter">ШАГ ${step+1} ИЗ ${m.steps.length}</span><h3>${title}</h3><p>${mission===0&&step===2&&!firstProgramActive()?'Продолжи работу с программой справа: проверь режим OUTPUT в setup(), порядок включения, пауз и выключения в loop(). Нажми «Запустить» и наблюдай за внешним светодиодом.':body}</p><p class="tip">${tip}</p>`;}
- if(firstProgramActive())signalExercise=createSignalExercise({mount:signalMount,saved:signalExerciseState,integrated:true,onChange:value=>{signalExerciseState=value;stop();setSource(previewSignalSketch(value));syncFirstProgram();queueDraftSave();}});
- else {codeMount.hidden=Boolean(missions[mission]?.independent&&programBuilder?.snapshot()?.mode==='blocks');$('code-hints').hidden=codeMount.hidden;document.querySelector('.code-toolbar').hidden=codeMount.hidden;}
- syncFirstProgram();
+ else {m.steps.forEach((s,i)=>{const b=make('button',{className:'step'+(i<=step?' active':''),title:`Шаг ${i+1}: ${s[0]}`});b.setAttribute('aria-label',b.title);b.onclick=()=>{step=i;renderLesson();};$('steps').append(b);});const [title,body,tip]=m.steps[step];$('lesson-content').innerHTML=`<span class="step-counter">ШАГ ${step+1} ИЗ ${m.steps.length}</span><h3>${title}</h3><p>${body}</p><p class="tip">${tip}</p>`;}
  $('prev').disabled=step===0||free||observing||transferring;$('next').disabled=free;$('next').textContent=transferring?'Проверить перенос':observing?'Записать наблюдение':step===m.steps.length-1?'Проверить результат':'Дальше →';menu.value=String(mission);
  scaffoldButton.hidden=!(missions[mission]?.independent && workbenchMode!=='observe');
- const intro=document.querySelector('.code-intro');intro.textContent=firstProgramActive()?'Собери команды и нажми «Запустить» ниже. C++ показывает ту же программу; вводить её повторно не нужно.':observing?'Исходная программа · только чтение. Сначала измерь сигнал, затем вернись к расследованию.':missions[mission]?.independent?'Выбери готовые команды и собери алгоритм блоками. Можно также перейти в C++.':'Редактор Arduino C++: подсветка синтаксиса, подсказки при вводе и указание ошибок.';
+ const intro=document.querySelector('.code-intro');intro.textContent=observing?'Исходная программа · только чтение. Сначала измерь сигнал, затем вернись к расследованию.':missions[mission]?.independent?'Выбери готовые команды и собери алгоритм блоками. Можно также перейти в C++.':'Редактор Arduino C++: подсветка синтаксиса, подсказки при вводе и указание ошибок.';
  document.querySelector('.code-panel').classList.toggle('code-observing',observing);queueDraftSave();
 }
 function loadMission(index,options={}){
@@ -395,10 +370,6 @@ function loadMission(index,options={}){
  if(options.reset)delete drafts[key];
  if(missions[index]?.independent&&!drafts[key]?.independent)delete drafts[key];
  const draft=drafts[key];
- signalExerciseState=normalizeSignalExercise(draft?.signalExercise);signalExerciseRequired=workbenchMode==='repair'&&index===0&&(options.requireSignalExercise===true||draft?.signalExerciseRequired===true);
- signalView='commands';
- // Preserve existing hand-written sketches instead of replacing them with tutorial commands.
- if(signalExerciseRequired&&draft?.code&&draft.code.trim()!==missions[0].code.trim()&&!isSignalSketchSource(draft.code,signalExerciseState))signalExerciseRequired=false;
  if(workbenchMode==='transfer'&&!draft&&drafts[0]){wires=drafts[0].wires.map(w=>({...w}));breadboard=drafts[0].breadboard;}
  if(!draft&&missions[index]?.independent){wires=[];breadboard=false;}
  if(!draft){temperature=25;syncTemperatureUI();}
@@ -408,7 +379,7 @@ function loadMission(index,options={}){
  if(index<FREE)setSource(workbenchMode==='observe'?missions[index].code:draft?.code??missions[index].code);
  if(!draft&&index>=1&&index<=2&&inspectCircuit(wires,false,breadboard).led?.source==='uno:12')setSource(missions[index].code.replace('int ledPin = 13;','int ledPin = 12;'));
  else if(draft)setSource(draft.code);
- if(firstProgramActive())setSource(previewSignalSketch(signalExerciseState));
+ if(index===0&&workbenchMode!=='transfer'&&draft)setSource(restoreEditableFirstSketch(draft.code,draft.signalExercise,missions[0].code));
  if(missions[index]?.independent)programBuilder=createProgramBuilder({mount:programMount,kind:'arduino',saved:draft?.program,readCode:currentCode,writeCode:setSource,onMode:showProgramMode,onChange:queueDraftSave,beforeChange:stop});
  bb.hidden=!breadboard;stage.classList.toggle('with-breadboard',breadboard);board.classList.toggle('with-breadboard',breadboard);bbToggle.textContent=breadboard?'− Убрать макетную плату':'＋ Макетная плата';
  if(draft?.positions&&Object.keys(draft.positions).length){applyPositions(draft.positions);layoutWidth=draft.canvasWidth||stage.clientWidth||760;layoutReady=true;}
@@ -422,23 +393,21 @@ $('prev').onclick=()=>{step=Math.max(0,step-1);renderLesson();};
 $('next').onclick=()=>{if(workbenchMode==='observe'||workbenchMode==='transfer'||step===missions[mission].steps.length-1)checkMission();else{step++;renderLesson();}};
 
 function press(value){if(testRunning)return;const button=parts.get('button').element;button.pressed=value;document.querySelector('.press-button').classList.toggle('held',value);if(sim&&running)sim.setButton(value);}
-function stop(){signalExercise?.setDisabled(false);programBuilder?.setDisabled(false);temperatureInput.disabled=false;runId++;running=false;busy=false;testRunning=false;cancelAnimationFrame(raf);if(cancelCompile){const cancel=cancelCompile;cancelCompile=null;cancel();}else if(compileWorker){compileWorker.terminate();compileWorker=null;}parts.get('uno').element.ledPower=false;parts.get('button').element.pressed=false;document.querySelector('.press-button').classList.remove('held');sim=null;setLight({led:false,led13:false});$('run').disabled=false;$('run').textContent='▶ Запустить';$('stop').disabled=true;$('runtime-status').textContent='Остановлено';$('check').disabled=false;menu.disabled=false;setCodeEditable(workbenchMode!=='observe');syncFirstProgram();}
+function stop(){programBuilder?.setDisabled(false);temperatureInput.disabled=false;runId++;running=false;busy=false;testRunning=false;cancelAnimationFrame(raf);if(cancelCompile){const cancel=cancelCompile;cancelCompile=null;cancel();}else if(compileWorker){compileWorker.terminate();compileWorker=null;}parts.get('uno').element.ledPower=false;parts.get('button').element.pressed=false;document.querySelector('.press-button').classList.remove('held');sim=null;setLight({led:false,led13:false});$('run').disabled=false;$('run').textContent='▶ Запустить';$('stop').disabled=true;$('runtime-status').textContent='Остановлено';$('check').disabled=false;menu.disabled=false;setCodeEditable(workbenchMode!=='observe');}
 function compileSource(source){return new Promise((resolve,reject)=>{const worker=new Worker(new URL('avr/worker.js',document.baseURI),{type:'module'});compileWorker=worker;const timeout=setTimeout(()=>{worker.terminate();if(compileWorker===worker)compileWorker=null;reject(new Error('Компилятор не ответил за 3 минуты. Обнови страницу и попробуй ещё раз.'));},180000);const cleanup=()=>{clearTimeout(timeout);worker.terminate();if(compileWorker===worker){compileWorker=null;cancelCompile=null;}};cancelCompile=()=>{cleanup();reject(new Error('Компиляция остановлена'));};worker.onmessage=e=>{cleanup();e.data.ok?resolve(e.data.result):reject(new Error(e.data.error?.message||'Не удалось скомпилировать программу'));};worker.onerror=e=>{cleanup();reject(new Error(e.message||'Не удалось загрузить компилятор'));};worker.postMessage({source:'#include <Arduino.h>\n#line 1 "sketch.ino"\n'+source,sensors:[],assetsBase:new URL('avr/',document.baseURI).href});});}
 async function run(){
  stop();
- if(firstProgramActive()){const source=buildSignalSketch(signalExerciseState);if(!source){feedback('Выбери режим контакта и все четыре команды в программе справа.');return;}setSource(source);saveWorkshop();}
  const blockIssue=programBuilder?.problem();if(blockIssue){feedback(blockIssue,'error');log(blockIssue);return;}
  const id=runId,source=currentCode();compileDiags=[];showCodeDiagnostics(analyzeSketch(source));
  const circuit=inspectCircuit(wires,false,breadboard);
- busy=true;signalExercise?.setDisabled(true);programBuilder?.setDisabled(true);syncFirstProgram();$('run').disabled=true;$('run').textContent='Собираю программу…';$('stop').disabled=false;$('check').disabled=true;$('runtime-status').textContent='Компиляция';
+ busy=true;programBuilder?.setDisabled(true);$('run').disabled=true;$('run').textContent='Собираю программу…';$('stop').disabled=false;$('check').disabled=true;$('runtime-status').textContent='Компиляция';
  feedback('Собираю программу. После компиляции плата запустится автоматически.');
  log('Компиляция Arduino C++…\nПри первом запуске загружаются инструменты (~18 МБ и файлы Arduino).');
  try{
    let result;if(lastHex&&lastSource===source)result={hex:lastHex,fitsTarget:true};else result=await compileSource(source);
    if(id!==runId)return;if(!result.fitsTarget)throw new Error('Программа не помещается в память Arduino Uno.');lastHex=result.hex;lastSource=source;
-   busy=false;signalExercise?.setDisabled(false);programBuilder?.setDisabled(false);syncFirstProgram();serialText='';let faultMessage=null;
+   busy=false;programBuilder?.setDisabled(false);serialText='';let faultMessage=null;
    sim=new Emulator(result.hex,wires.map(w=>({...w})),{breadboard,temperature,onChange:setLight,onSerial:char=>{serialText=(serialText+char).slice(-3000);},onFault:message=>{faultMessage=message;}});
-   if(firstProgramActive()){signalExerciseState.applied=true;signalExercise?.setApplied(true);saveWorkshop();}
    running=true;$('run').textContent='▶ Выполняется';$('run').disabled=true;$('check').disabled=false;$('runtime-status').textContent='Программа работает';parts.get('uno').element.ledPower=true;
    log('Программа скомпилирована.\nВыполняется на виртуальном ATmega328P.');feedback(missions[mission]?.independent?(circuit.led?'Программа запущена. Проверь поведение устройства.':'Программа запущена. Светодиод не образует рабочую цепь.'):circuit.reason,circuit.led?'success':'');window.dispatchEvent(new CustomEvent('nexora:program-run',{detail:{mission,hasCircuit:Boolean(circuit.led)}}));
    let previous=performance.now();
@@ -451,7 +420,7 @@ $('run').onclick=run;$('stop').onclick=()=>{stop();feedback('Программа 
 
 async function checkMission(){
  if(testRunning||busy)return;
- if(mission===0&&workbenchMode!=='transfer'&&signalExerciseRequired&&!completed.has(0)&&!signalExerciseState.applied){step=2;signalView='commands';renderLesson();feedback('Сначала собери программу справа и нажми общую кнопку «Запустить». Затем проверь работу внешнего светодиода.');return;}
+
  const circuit=inspectCircuit(wires,false,breadboard);
  if(mission===FREE){feedback(circuit.reason,circuit.led?'success':'error');return;}
  if(!circuit.led||circuit.error){feedback(missions[mission]?.independent?'Проверка схемы не пройдена: проверь замкнутость цепи, полярность и наличие резистора.':circuit.reason,'error');return;}

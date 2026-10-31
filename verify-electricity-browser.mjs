@@ -68,7 +68,7 @@ try{
   await page.emulateMedia({reducedMotion:'reduce'});
   assert.equal(await school.locator('.electric-flow').evaluate(el=>getComputedStyle(el).animationName),'none');
   await next();await school.locator('[data-electric-finish]').click();
-  await page.locator('body.workbench-open #signal-program-commands').waitFor();await page.setViewportSize({width:1440,height:1000});
+  await page.locator('body.workbench-open #code-editor .cm-content').waitFor();await page.setViewportSize({width:1440,height:1000});
   assert.equal((await progress()).electricity.solved.every(Boolean),true);
   assert.equal(await page.locator('.connection-instruction-row:visible').count(),0,'wiring solution is hidden by default');
   await page.locator('#next').click();assert.match(await page.locator('#lesson-content').innerText(),/Выбери соединения сама/);
@@ -77,19 +77,21 @@ try{
     await page.locator(`#board [data-pin="${a}"]`).click();await page.locator(`#board [data-pin="${b}"]`).click();
   }
   assert.equal(await page.evaluate(()=>window.nexoraWorkshop.getState().wires.length),3);
-  await page.locator('#check').click();await page.locator('[data-signal-setup]').waitFor();
-  await page.locator('[data-signal-setup]').selectOption('OUTPUT');
-  for(const [i,id] of ['high','wait500','high','wait500'].entries())await page.locator(`[data-signal-line="${i}"]`).selectOption(id);
+  const firstEditor=page.locator('#code-editor .cm-content');
+  assert.equal(await firstEditor.getAttribute('contenteditable'),'true');
+  assert.equal(await page.locator('[data-signal-setup],#signal-program-tools,.signal-exercise').count(),0,'ordinary lessons use editable C++ only');
+  const initialCode=await page.evaluate(()=>window.nexoraWorkshop.getState().code);
+  assert.match(initialCode,/delay\(500\)/);
+  await firstEditor.fill(initialCode.replace('digitalWrite(ledPin, LOW)','digitalWrite(ledPin, HIGH)'));
   await page.locator('#run').click();await page.waitForFunction(()=>window.nexoraWorkshop.getState().running,{},{timeout:120000});
   await page.waitForFunction(()=>parseFloat(document.querySelector('#sim-time').textContent)>3,{},{timeout:45000});
   await page.locator('#check').click();assert.equal(await page.locator('.mission-transition-action').count(),0);
   assert.match(await page.locator('#feedback').innerText(),/переключений/);
-  await page.locator('[data-signal-line="2"]').selectOption('low');
-  await page.reload();await page.locator('[data-signal-line="2"]').waitFor();assert.equal(await page.locator('[data-signal-line="2"]').inputValue(),'low');
-  await page.screenshot({path:`${out}/signal-exercise.png`,fullPage:true});
-  const labels=await page.locator('[data-signal-line]').evaluateAll(nodes=>nodes.map(n=>n.selectedOptions[0].textContent));assert.match(labels[0],/HIGH/);assert.match(labels[2],/LOW/);
-  await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.signal-exercise').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
-  await page.screenshot({path:`${out}/signal-exercise-mobile.png`,fullPage:true});await page.setViewportSize({width:1440,height:1000});
+  await firstEditor.fill(initialCode);
+  await page.reload();await firstEditor.waitFor();assert.equal(await page.evaluate(()=>window.nexoraWorkshop.getState().code),initialCode);
+  await page.screenshot({path:`${out}/first-editable-program.png`,fullPage:true});
+  await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('#code-editor').evaluate(el=>el.scrollWidth<=el.clientWidth+1),true);
+  await page.screenshot({path:`${out}/first-editable-program-mobile.png`,fullPage:true});await page.setViewportSize({width:1440,height:1000});
   await page.locator('#run').click();await page.waitForFunction(()=>window.nexoraWorkshop.getState().running,{},{timeout:120000});
   await page.waitForFunction(()=>/\d\.\d\d с/.test(document.querySelector('#sim-time').textContent)&&parseFloat(document.querySelector('#sim-time').textContent)>3,{},{timeout:45000});
   await page.locator('#check').click();await page.locator('.mission-transition-action').waitFor();
@@ -108,7 +110,7 @@ try{
   await page.locator('#check').click();assert.equal((await progress()).game.caseOne.transferDone,false,'moving only the wire does not pass');
   await page.locator('#stop').click();
   const editor=page.locator('#code-editor .cm-content');await editor.focus();await page.keyboard.press('ControlOrMeta+a');await page.keyboard.insertText(firstSketch.replace('ledPin = 13','ledPin = 12'));
-  await page.reload();await page.locator('body.workbench-open #signal-program-commands').waitFor();
+  await page.reload();await page.locator('body.workbench-open #code-editor .cm-content').waitFor();
   assert.equal(await page.evaluate(()=>window.nexoraWorkshop.getState().mode),'transfer');
   assert.match(await page.evaluate(()=>window.nexoraWorkshop.getState().code),/ledPin = 12/);
   assert.equal((await progress()).workshop.drafts[0].code,firstSketch,'transfer preserves the initial repair draft');

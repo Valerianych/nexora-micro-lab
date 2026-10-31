@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {normalizeCaseOne,diagnosisComplete,normalizeSignalExercise,buildSignalSketch,signalPreview,previewSignalSketch,isSignalSketchSource} from './case-one.js';
+import {normalizeCaseOne,diagnosisComplete,normalizeSignalExercise,buildSignalSketch,signalPreview,previewSignalSketch,isSignalSketchSource,restoreEditableFirstSketch} from './case-one.js';
 import {restoreGame,restoreWorkshop,caseSnapshot,clearWorkshop} from './progress.js';
 
 assert.equal(diagnosisComplete(normalizeCaseOne({checks:['power','program'],verdict:'circuit'})),false);
@@ -25,14 +25,15 @@ assert.deepEqual(restored.drafts[0].signalExercise,exercise);
 const cleaned=clearWorkshop({...restored,completed:[...restored.completed]},[0,1,2]);assert.deepEqual(Object.keys(cleaned.drafts),['3']);assert.deepEqual(cleaned.completed,[]);
 console.log('PASS diagnosis evidence, legacy saves, code construction/preview, transfer draft isolation, case snapshots and replay cleanup.');
 
-const emptyPreview=previewSignalSketch({});
-assert(!emptyPreview.includes('digitalWrite('),'unfinished commands must not expose a pre-solved program');
-assert.equal(previewSignalSketch(exercise),buildSignalSketch(exercise),'the command form and C++ preview represent the same program');
-assert(isSignalSketchSource(buildSignalSketch(exercise),exercise));
-assert(isSignalSketchSource('/* student comment */\n'+buildSignalSketch(exercise),exercise));
-assert(!isSignalSketchSource('int ledPin=8; void setup(){} void loop(){}',exercise),'custom legacy C++ drafts must remain editable and intact');
-const unfinished={setup:'OUTPUT',lines:['high','','',''],applied:false};
-const resumed=restoreWorkshop({drafts:{0:{code:previewSignalSketch(unfinished),signalExercise:unfinished,signalExerciseRequired:true}}},new Set(),9);
-assert.equal(resumed.drafts[0].code,previewSignalSketch(unfinished));
-assert.deepEqual(resumed.drafts[0].signalExercise.lines,['high','','','']);
-console.log('PASS one shared program, unfinished preview, legacy code recognition and resumed command drafts.');
+const firstDefault='int ledPin=13; void setup(){pinMode(ledPin,OUTPUT);} void loop(){digitalWrite(ledPin,HIGH);delay(500);digitalWrite(ledPin,LOW);delay(500);}';
+const unfinished={setup:'OUTPUT',lines:['high','wait1000','',''],applied:false};
+const recovered=restoreEditableFirstSketch(previewSignalSketch(unfinished),unfinished,firstDefault);
+assert(recovered.includes('delay(1000)'),'chosen values survive migration');
+assert(recovered.includes('digitalWrite(ledPin, LOW)'),'missing commands regain an editable starting example');
+assert(!recovered.includes('выбери команду'));
+const completeCustom=buildSignalSketch({setup:'OUTPUT',lines:['high','wait500','low','wait1000']});
+assert.equal(restoreEditableFirstSketch(completeCustom,exercise,firstDefault),completeCustom,'completed student values must not be changed');
+const handwritten='int ledPin=8; void setup(){pinMode(8,OUTPUT);} void loop(){digitalWrite(8,HIGH);delay(750);}';
+assert.equal(restoreEditableFirstSketch(handwritten,unfinished,firstDefault),handwritten,'hand-written code must remain untouched');
+assert.equal(restoreEditableFirstSketch(undefined,undefined,firstDefault),firstDefault);
+console.log('PASS migration from partial command forms, preserved chosen values, preserved complete and hand-written C++ drafts.');

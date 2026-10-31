@@ -923,7 +923,6 @@ function enterRoom(room) {
 }
 
 function openWorkbench(index, options = {mode:'repair'}) {
-  if(index===0&&state.activeCase==='001'&&options.mode!=='transfer')options={...options,requireSignalExercise:!state.completed.has(0)};
   if(index===0&&state.activeCase==='001'&&!state.completed.has(0)&&!electricitySchool.isComplete()){
     state.view='story';saveGame();
     electricitySchool.open({onComplete:()=>openWorkbench(index,options)});

@@ -31,6 +31,15 @@ export function isSignalSketchSource(source,value){
   const compact=code=>String(code??'').replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,'');
   return [previewSignalSketch(value),buildSignalSketch(value)].filter(Boolean).some(code=>compact(code)===compact(source));
 }
+// Recover an unfinished sketch created by the retired first-lesson form.
+// Hand-written code and already complete generated sketches keep their values.
+export function restoreEditableFirstSketch(source,value,fallback){
+  if(typeof source!=='string')return fallback;
+  const hasPlaceholders=source.includes('// Выбери режим контакта во вкладке «Собрать команды».')||/\/\/ Строка [1-4]: выбери команду\./.test(source);
+  if(!hasPlaceholders||!isSignalSketchSource(source,value))return source;
+  const saved=normalizeSignalExercise(value),defaults=['high','wait500','low','wait500'];
+  return buildSignalSketch({setup:saved.setup||'OUTPUT',lines:saved.lines.map((id,i)=>id||defaults[i])});
+}
 export function signalPreview(value){
   const state=normalizeSignalExercise(value);let level=false,time=0;const segments=[];
   for(const id of state.lines){
