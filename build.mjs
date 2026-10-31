@@ -20,6 +20,7 @@ await build({entryPoints:['main.js'],bundle:true,format:'esm',outfile:'dist/app.
 await build({entryPoints:['esp-worker.js'],bundle:true,alias:{stream:'stream-browserify',util:'util/'},inject:['esp-browser-globals.js'],define:{global:'globalThis'},format:'esm',outfile:'dist/esp-worker.js',minify:true,target:'es2022'});
 await cp('career-cases.js','dist/career-cases.js');
 await cp('game.js','dist/game.js');
+for(const file of ['study-tools.js','learning-record.js','case-reflections.js'])await cp(file,`dist/${file}`);
 await cp('case-one.js','dist/case-one.js');
 await cp('electricity-school.js','dist/electricity-school.js');
 await cp('electricity-model.js','dist/electricity-model.js');

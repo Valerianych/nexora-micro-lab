@@ -5,7 +5,7 @@
   "scripts": {
     "build": "node build.mjs",
     "start": "node serve.mjs",
-    "check": "node verify-progress.mjs && node verify-media.mjs",
+    "check": "node verify-progress.mjs && node verify-media.mjs && node verify-study-tools.mjs",
     "check:browser": "node verify-browser.mjs",
     "check:workspace": "node verify-workspace.mjs",
     "check:career": "node verify-career.mjs",

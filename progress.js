@@ -21,6 +21,7 @@ export function readProgress(storage) {
 }
 
 export function writeProgress(section, value, storage) {
+  if(globalThis.__nexoraProgressReplacing)return false;
   try {
     storage ??= globalThis.localStorage;
     const data = readProgress(storage);

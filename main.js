@@ -44,6 +44,7 @@ function saveWorkshop(){
 }
 function queueDraftSave(){if(!savingReady||restoringDraft)return;clearTimeout(draftSaveTimer);draftSaveTimer=setTimeout(saveWorkshop,180);}
 window.addEventListener('pagehide',saveWorkshop);
+window.addEventListener('nexora:flush-progress',saveWorkshop);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveWorkshop();});
 const board=$('board');const stage=make('div',{className:'stage'});board.append(stage);stage.append($('wires'));stage.append(board.querySelector('.board-hint'));
 const svg=$('wires');
@@ -168,7 +169,7 @@ const partSpecs=[
  {id:'sensor',tag:'div',label:'ДАТЧИК TMP36',x:520,y:285,w:116,h:92,scale:1,virtualPins:sensorPins},
 ];
 
-function feedback(text,type=''){const el=$('feedback');el.textContent=text;el.className='feedback '+type;}
+function feedback(text,type=''){if(type==='error')window.dispatchEvent(new CustomEvent('nexora:learning-feedback',{detail:{mission,kind:type,text}}));const el=$('feedback');el.textContent=text;el.className='feedback '+type;}
 function log(text){$('console').textContent=text;}
 function setLight(data){parts.get('led').element.value=data.led;parts.get('uno').element.led13=data.led13;badge.textContent='Светодиод: '+(data.led?'включён':'выключен');badge.classList.toggle('lit',data.led);}
 

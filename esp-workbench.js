@@ -34,6 +34,7 @@ function drafts(){const value=readProgress().espWorkshop;return value&&typeof va
 function save(){clearTimeout(saving);if(!active||!mission||!editor)return;writeProgress('espWorkshop',{...drafts(),[mission.index]:{code:code(),program:programBuilder?.snapshot(),learning:learning?.snapshot(),layoutVersion:2,wires,positions,inputs:{...inputs,button:false}}});}
 function queueSave(){clearTimeout(saving);saving=setTimeout(save,180);}
 window.addEventListener('pagehide',save);
+window.addEventListener('nexora:flush-progress',save);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){save();if(active)press(false);}});
 export const isEspOpen=()=>active;
 export const getEspState=()=>({mission:mission?.index,code:code(),program:programBuilder?.snapshot(),learning:learning?.snapshot(),wires:structuredClone(wires),inputs:{...inputs},running:status==='running',state:lastState});
@@ -44,7 +45,7 @@ export function resetEspProgress(indices=null){
   if(active&&(!indices||indices.includes(mission.index))){stopEsp();active=false;root.hidden=true;document.body.classList.remove('esp-open');}
 }
 export function closeEspWorkshop(){if(active)save();stopEsp();active=false;if(root)root.hidden=true;document.body.classList.remove('esp-open');}
-function message(text,kind=''){const out=$('messages');if(out){out.textContent=text;out.className=`esp-message ${kind}`;}}
+function message(text,kind=''){if(kind==='error')window.dispatchEvent(new CustomEvent('nexora:learning-feedback',{detail:{mission:mission?.index,kind,text}}));const out=$('messages');if(out){out.textContent=text;out.className=`esp-message ${kind}`;}}
 function syncButtons(){if(!root)return;$('run').disabled=status!=='stopped';$('stop').disabled=status==='stopped';$('check').disabled=status==='checking';$('status').textContent={running:'Программа работает',starting:'Запуск…',checking:'Испытания…',stopped:'Остановлено'}[status];root.classList.toggle('is-checking',status==='checking');programBuilder?.setDisabled(status==='checking'||status==='starting');learning?.setDisabled(status==='checking'||status==='starting');if($('button-press'))$('button-press').disabled=status==='checking';root.querySelectorAll('[data-input]').forEach(input=>input.disabled=status==='checking');}
 export function stopEsp(){requestId++;clearTimeout(timeout);worker?.terminate();worker=null;status='stopped';inputs.button=false;if(root){$('press')?.classList.remove('held');$('press')?.setAttribute('aria-pressed','false');root.querySelector('.esp-part-led')?.classList.remove('is-lit');syncComponentVisuals({led:false,inputs:{button:false}});if(lastState){lastState={...lastState,led:false,motor:0,inputs:{...lastState.inputs,button:false}};renderState(lastState);}syncButtons();}}
 function fail(error){stopEsp();message(error.message||String(error),'error');if(error.line&&editor){const n=Math.min(editor.state.doc.lines,Math.max(1,error.line)),line=editor.state.doc.line(n);editor.dispatch(setDiagnostics(editor.state,[{from:line.from,to:line.to,severity:'error',message:error.message}]));}}

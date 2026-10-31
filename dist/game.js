@@ -1,3 +1,5 @@
+import {createStudyTools} from './study-tools.js';
+import {threadLead,threadClues} from './case-reflections.js';
 import {readProgress, writeProgress, restoreGame, serializeGame, signalSnapshot, caseSnapshot, clearWorkshop, clearProgress} from './progress.js';
 import {CASE_MISSIONS, extraCases} from './case-stories.js';
 import {modelMarkup, bindModel} from './case-models.js';
@@ -57,6 +59,24 @@ const scene = $('scene');
 const actions = $('dialogue-actions');
 const comicIntro = $('comic-intro');
 
+const storyBar=document.createElement('div');storyBar.id='story-action-bar';storyBar.className='story-action-bar';storyBar.hidden=true;
+storyBar.innerHTML='<span>Следующий шаг дела</span><button type="button" class="accent"></button>';document.body.append(storyBar);
+let primaryStoryAction=null,storyBarFrame=0;
+function syncStoryBar(){
+  cancelAnimationFrame(storyBarFrame);storyBarFrame=requestAnimationFrame(()=>{
+    primaryStoryAction=comicIntro?.querySelector('.is-new [data-intro-action], [data-story-action]');
+    const blocked=!state.started||document.body.classList.contains('workbench-open')||document.querySelector('dialog[open],.case-reveal,.mission-transition');
+    const rect=primaryStoryAction?.getBoundingClientRect(),visible=rect&&rect.top>=0&&rect.bottom<=innerHeight-16;
+    storyBar.hidden=Boolean(blocked||!primaryStoryAction||visible);
+    if(primaryStoryAction){const button=storyBar.querySelector('button');button.textContent=primaryStoryAction.textContent;button.disabled=primaryStoryAction.disabled;}
+  });
+}
+storyBar.querySelector('button').onclick=()=>{if(primaryStoryAction&&!primaryStoryAction.disabled)primaryStoryAction.click();};
+new MutationObserver(syncStoryBar).observe(comicIntro,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden']});
+new MutationObserver(syncStoryBar).observe(document.body,{attributes:true,attributeFilter:['class'],childList:true});
+document.addEventListener('toggle',syncStoryBar,true);window.addEventListener('scroll',syncStoryBar,{passive:true,capture:true});window.addEventListener('resize',syncStoryBar);
+
+
 const roomNames = {
   briefing: 'Комната связи',
   workshop: 'Мастерская',
@@ -72,18 +92,18 @@ const inventoryIcons = {
 };
 
 const skillCatalog = [
+  {id:'circuit',label:'Сборка цепи',detail:'соединять плату'},
+  {id:'variables',label:'Переменные',detail:'давать значениям имена'},
+  {id:'types',label:'Типы данных',detail:'int и bool'},
+  {id:'conditions',label:'Условия',detail:'if / else'},
+  {id:'loops',label:'Циклы',detail:'повторять действие'},
+  {id:'arrays',label:'Массивы',detail:'хранить список'},
+  {id:'functions',label:'Функции',detail:'собирать команды'},
   {id:'independent',label:'Самостоятельный проект',detail:'собрать с нуля'},
   {id:'esp32',label:'ESP32',detail:'GPIO и 3,3 В'},
   {id:'pwm',label:'АЦП и ШИМ',detail:'измерять и управлять'},
   {id:'i2c',label:'Шина I²C',detail:'опросить два датчика'},
   {id:'camera',label:'Камера SPI',detail:'планировать съёмку'},
-  { id: 'circuit', label: 'Сборка цепи', detail: 'соединять плату' },
-  { id: 'variables', label: 'Переменные', detail: 'давать значениям имена' },
-  { id: 'types', label: 'Типы данных', detail: 'int и bool' },
-  { id: 'conditions', label: 'Условия', detail: 'if / else' },
-  { id: 'loops', label: 'Циклы', detail: 'повторять действие' },
-  { id: 'arrays', label: 'Массивы', detail: 'хранить список' },
-  { id: 'functions', label: 'Функции', detail: 'собирать команды' },
 ];
 
 const missionSkills = {
@@ -115,6 +135,10 @@ const caseCatalog = [
 function caseInfo(id = state.activeCase) {
   return caseCatalog.find((item) => item.id === id) || caseCatalog[0];
 }
+
+const studyTools=createStudyTools({catalog:caseCatalog,getGame:()=>serializeGame(state),flushGame:saveGame});
+window.addEventListener('nexora:flush-progress',saveGame);
+const investigationNote=()=>`<p class="investigation-note"><b>Общая папка TEST-04</b>${threadLead(state.activeCase,[...state.completedCases])}</p>`;
 
 const sceneArt = {
   briefing: {
@@ -436,10 +460,12 @@ function beginCase(id, {replay=false}={}) {
   const saved = !replay && state.caseSaves[id];
   dismissCaseReveal();
   $('archive-modal')?.close();
+  studyTools.switchCase();
   state.activeCase = id;
   state.started = true;
   resetCaseProgress();
   if(replay){
+    studyTools.resetCase(id);
     delete state.caseSaves[id];
     if(id==='001')electricitySchool.reset();
     if(window.nexoraWorkshop?.resetProgress)window.nexoraWorkshop.resetProgress(CASE_MISSIONS[id]);
@@ -455,7 +481,7 @@ function beginCase(id, {replay=false}={}) {
 }
 
 function casePaperMarkup(item, kind, stamp) {
-  return `<article class="case-paper ${kind}"><div class="case-paper-top"><span>CASE / ${item.id}</span><b>${stamp}</b></div><div class="case-paper-photo${item.sheet?' comic-sheet panel-0':''}"><img src="${item.image}" alt="" width="1280" height="720" loading="eager" decoding="sync"></div><h3>${item.title}</h3><p>«${item.problem}»</p><div class="case-paper-sign">— Архив Нексора</div></article>`;
+  return `<article class="case-paper ${kind}"><div class="case-paper-top"><span>ДЕЛО / ${item.id}</span><b>${stamp}</b></div><div class="case-paper-photo${item.sheet?' comic-sheet panel-0':''}"><img src="${item.image}" alt="" width="1280" height="720" loading="eager" decoding="sync"></div><h3>${item.title}</h3><p>«${item.problem}»</p><div class="case-paper-sign">— Архив Нексора</div></article>`;
 }
 
 function showCaseReveal(currentId, nextId) {
@@ -487,6 +513,8 @@ function showCaseReveal(currentId, nextId) {
 
 function completeCurrentCase() {
   const current = caseInfo();
+  if(!studyTools.beforeClose(current.id,completeCurrentCase))return;
+  if(!state.journal.some(entry=>entry.title==='Общая папка TEST-04'))appendJournal('Общая папка TEST-04',threadClues[current.id]);
   const index = caseCatalog.findIndex((item) => item.id === current.id);
   const next = caseCatalog[index + 1];
   state.completedCases.add(current.id);
@@ -584,7 +612,7 @@ function renderIntro() {
   comicIntro.hidden = false;
   comicIntro.className = 'comic-intro';
   storyAction = advanceIntro;
-  comicIntro.innerHTML = `<div class="comic-intro-head"><div><span class="comic-intro-kicker">ВИЗУАЛЬНАЯ НОВЕЛЛА / ДЕЛО 001</span><h2>Тишина перед первым импульсом</h2></div><span class="comic-intro-count">${String(state.introStep + 1).padStart(2, '0')} / ${String(introPanels.length).padStart(2, '0')}</span></div><div class="comic-intro-grid">${visiblePanels.map((panel, index) => `<article class="comic-intro-panel${index === state.introStep ? ' is-new' : ''}" data-index="${index}"><div class="comic-intro-image"><img src="${panel.src}" alt="${panel.alt}" width="1280" height="720" loading="eager" decoding="sync" style="object-position:${panel.position}"><span class="comic-intro-number">${String(index + 1).padStart(2, '0')}</span></div><div class="comic-intro-caption"><span class="comic-intro-panel-kicker">${panel.kicker}</span><h3>${panel.title}</h3><p>${panel.text}</p>${index === state.introStep ? `<button class="accent comic-intro-action" data-intro-action="advance">${panel.action}</button>` : ''}</div></article>`).join('')}</div>`;
+  comicIntro.innerHTML = `<div class="comic-intro-head"><div><span class="comic-intro-kicker">ВИЗУАЛЬНАЯ НОВЕЛЛА / ДЕЛО 001</span><h2>Тишина перед первым импульсом</h2></div><span class="comic-intro-count">${String(state.introStep + 1).padStart(2, '0')} / ${String(introPanels.length).padStart(2, '0')}</span></div><div class="comic-intro-grid">${visiblePanels.map((panel, index) => `<article class="comic-intro-panel${index === state.introStep ? ' is-new' : ''}" data-index="${index}"><div class="comic-intro-image"><img src="${panel.src}" alt="${panel.alt}" width="1280" height="720" loading="eager" decoding="sync" style="object-position:${panel.position}"><span class="comic-intro-number">${String(index + 1).padStart(2, '0')}</span></div><div class="comic-intro-caption"><span class="comic-intro-panel-kicker">${panel.kicker}</span><h3>${panel.title}</h3><p>${panel.text}</p>${index===0?investigationNote():''}${index === state.introStep ? `<button class="accent comic-intro-action" data-intro-action="advance">${panel.action}</button>` : ''}</div></article>`).join('')}</div>`;
   const newest = comicIntro.querySelector('.comic-intro-panel.is-new');
   if (newest && state.introStep > 0) requestAnimationFrame(() => newest.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
   });
@@ -839,11 +867,11 @@ function setExtraStage(stage){
 function renderExtraCase(){
   const id=state.activeCase,story=extraCases[id],stage=state.caseStage;
   const common={room:state.room,location:`${story.location} · ДЕЛО ${id}`,caption:story.arc?`ДЕЛО ${id} / ${[0,1,3,4].indexOf(stage)+1} ИЗ 4`:`РАССЛЕДОВАНИЕ / ${stage+1} ИЗ 5`};
-  if(stage===0)return renderStoryBeat({...common,frame:story.frames[0],status:'НОВАЯ ЖАЛОБА',kicker:`ДЕЛО ${id} / ВХОДЯЩИЙ СИГНАЛ`,title:story.opening.title,text:story.opening.text,voice:story.opening.voice,actionLabel:'Осмотреть устройство →',action:()=>setExtraStage(1)});
+  if(stage===0)return renderStoryBeat({...common,frame:story.frames[0],status:'НОВАЯ ЖАЛОБА',kicker:`ДЕЛО ${id} / ВХОДЯЩИЙ СИГНАЛ`,title:story.opening.title,text:story.opening.text,voice:story.opening.voice,extra:investigationNote(),actionLabel:'Осмотреть устройство →',action:()=>setExtraStage(1)});
   if(stage===1)return renderStoryBeat({...common,frame:story.frames[1],status:'УЛИКА НАЙДЕНА',kicker:`ДЕЛО ${id} / ИЗМЕРЕНИЕ`,title:story.evidence.title,text:story.evidence.text,voice:`«${story.evidence.detail}»`,extra:`<div class="signal-comparison">${story.evidence.values.map((value,i)=>`<div class="evidence-strip${i===story.evidence.values.length-1?' is-good':''}"><b>ФАКТ ${i+1}</b><small>${value}</small></div>`).join('')}</div>`,actionLabel:story.arc?'Принять задание →':'Разобрать улику →',action:()=>setExtraStage(story.arc?3:2)});
   if(stage===2&&story.arc){setExtraStage(3);return;}
   if(stage===2)return renderStoryBeat({...common,frame:story.frames[2],status:'ГИПОТЕЗА',kicker:`ДЕЛО ${id} / ОБУЧАЮЩИЙ РАЗБОР`,title:story.lesson.title,text:story.lesson.text,voice:story.lesson.voice,extra:modelMarkup(),actionLabel:state.modelDone?'Открыть верстак ремонта →':'Сначала пройти микропроверку',action:()=>{if(state.modelDone)setExtraStage(3);},onReady:()=>bindModel(id,state,queueSave)});
-  if(stage===3)return renderStoryBeat({...common,frame:story.frames[3],status:'ПРОВЕРЯЕМ ГИПОТЕЗУ',kicker:`ДЕЛО ${id} / РЕМОНТ`,title:story.repair.title,text:story.repair.text,voice:`«${story.repair.hint}»`,extra:story.arc?'':`<details class="repair-hint"><summary>Подсказка по ремонту</summary><p>${story.repair.hint}</p></details>`,actionLabel:'Открыть верстак →',action:()=>openWorkbench(story.mission)});
+  if(stage===3)return renderStoryBeat({...common,frame:story.frames[3],status:'ПРОВЕРЯЕМ ГИПОТЕЗУ',kicker:`ДЕЛО ${id} / РЕМОНТ`,title:story.repair.title,text:story.repair.text,voice:'«Сначала сравни наблюдение с требованием. Выбери изменение и проверь свою гипотезу на устройстве».',extra:`<details class="repair-hint"><summary>Подсказка наставницы</summary><p>${story.repair.hint}</p></details>`,actionLabel:'Открыть верстак →',action:()=>openWorkbench(story.mission)});
   return renderStoryBeat({...common,frame:story.frames[4],status:'ДЕЛО ЗАКРЫТО',kicker:`ДЕЛО ${id} / ОТЧЁТ ПРИНЯТ`,title:story.ending.title,text:story.ending.text,voice:story.ending.voice,extra:renderSkillSummary(),actionLabel:'Закрыть папку и открыть архив →',action:completeCurrentCase});
 }
 
@@ -948,6 +976,7 @@ function resetCase() {
   electricitySchool.close();electricitySchool.reset();
   Object.assign(state,initialState());
   clearProgress();
+  studyTools.reset();
   document.body.classList.remove('game-started','workbench-open');
   storyAction=null;comicIntro.replaceChildren();comicIntro.hidden=true;
   renderJournal();renderStats();saveGame();
