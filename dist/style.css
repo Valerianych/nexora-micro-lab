@@ -680,3 +680,22 @@ header,.code-panel{color:#22364b}
 .reflection-dialog{max-width:710px}.reflection-question{display:block;font:600 18px/1.5 system-ui,sans-serif;margin:20px 0 14px}.reflection-dialog #reflection-answer{max-width:240px}.reflection-reasons{border:0;padding:0;margin:22px 0}.reflection-reasons legend{font-size:15px;font-weight:700;margin-bottom:12px}.reflection-reasons label{display:flex;align-items:flex-start;gap:11px;padding:12px;margin:8px 0;border:1px solid #bdcbb1;border-radius:8px;font:14px/1.5 system-ui,sans-serif;cursor:pointer;background:#fff}.reflection-reasons input{margin-top:4px;accent-color:#577d2a;flex:0 0 auto}.reflection-reasons label:has(input:checked){border-color:#749c46;background:#edf6df}.learning-hint{padding:13px 0;margin:12px 0;font:13px/1.6 system-ui,sans-serif}.learning-hint p{font-size:13px}.reflection-feedback{font-size:14px;line-height:1.6;margin:16px 0;color:#3b6530}.reflection-note{margin:22px 0}.reflection-note small{font-size:11px;font-weight:400;color:#6b7b75}.reflection-note textarea{min-height:85px;resize:vertical}.reflection-dialog [hidden]{display:none}
 @media(max-width:1000px){.scene.intro-active .comic-intro-panel{grid-template-columns:1fr}.scene.intro-active .comic-intro-panel .comic-intro-image{height:230px!important}.scene.intro-active .comic-intro-caption{padding:18px}.header-actions{width:auto}.header-actions #save-status{display:none}}
 @media(max-width:760px){#site-header{padding:12px 14px;gap:10px}.header-actions{width:100%;margin:0;justify-content:flex-start;gap:6px}.header-actions button{font-size:11px;padding:8px 9px}.quest-map .skill-board{display:none}.scene .comic-intro{padding:64px 14px 20px}.scene .comic-intro-head h2{font-size:21px}.scene.intro-active .comic-intro-panel .comic-intro-image{height:185px!important}.scene.intro-active .comic-intro-caption h3{font-size:22px}.comic-intro-action:after{content:''}.story-action-bar{left:12px;right:12px;bottom:12px;max-width:none;padding:10px;gap:8px}.story-action-bar>span{display:none}.story-action-bar button{width:100%;max-width:none;font-size:12px}.study-dialog{padding:20px 16px;max-height:calc(100dvh - 24px)}.study-heading h2{font-size:24px}.study-profile{grid-template-columns:1fr;padding:15px;gap:12px}.study-actions>button{flex:1 1 190px;font-size:12px}.study-overview{gap:20px;flex-wrap:wrap}.study-overview>span{margin:0;max-width:none;width:100%}.study-table td:first-child{min-width:190px}.reflection-question{font-size:16px}.reflection-reasons label{font-size:13px}.study-dialog .study-lead{font-size:14px}}
+
+/* The first sketch has one command form, one C++ preview and one Run button. */
+.signal-program-tools[hidden],#signal-program-commands[hidden]{display:none!important}
+.signal-program-tabs{display:flex;gap:4px;padding:4px;background:#e4ebed;border:1px solid #b6c6cb;border-radius:9px;margin:10px 0}
+.signal-program-tabs button{flex:1;padding:9px 7px;font-size:12px;line-height:1.4;background:transparent;color:#405669;border:1px solid transparent;white-space:normal}
+.signal-program-tabs button[aria-selected="true"]{background:#172b3c;color:#e9f5df;border-color:#172b3c;box-shadow:0 2px 5px #172b3c20}
+.signal-program-tabs button:focus-visible{outline:3px solid #527cbb;outline-offset:1px}
+.first-program-active .code-intro{font-size:13px;line-height:1.55;margin-bottom:10px}
+.first-program-active .code-head>span{font-size:10px;white-space:nowrap}
+.signal-exercise.signal-exercise-integrated{margin:0;padding:12px;border-color:#49697d;background:#172b3c}
+.signal-exercise-integrated label{margin-top:0;font-size:12px}
+.signal-exercise-integrated select{font:12px/1.4 system-ui,sans-serif;padding:8px;min-height:37px}
+.signal-exercise-integrated .signal-exercise-lines{margin-top:12px}
+.signal-exercise-integrated .signal-exercise-lines label{margin:6px 0}
+.signal-exercise-integrated .signal-preview{min-height:43px;margin:12px 0 7px;padding:4px}
+.signal-exercise-integrated .signal-preview-note{margin:7px 0!important;line-height:1.5!important}
+.signal-exercise-integrated .signal-exercise-status{margin:8px 0 0!important;padding-top:8px;border-top:1px solid #456277;font-size:11px!important;line-height:1.5!important}
+.first-program-active .run-row{margin-top:12px}
+@media(max-width:760px){.signal-program-tabs button{font-size:13px}.signal-exercise-integrated select{font-size:13px;min-height:41px}.signal-exercise-integrated .signal-exercise-lines label{margin:8px 0}}

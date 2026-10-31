@@ -23,6 +23,14 @@ export function buildSignalSketch(value){
   if(!state.setup||state.lines.some(id=>!id))return null;
   return `int ledPin = 13;\n\nvoid setup() {\n  pinMode(ledPin, ${state.setup});\n}\n\nvoid loop() {\n${state.lines.map(id=>'  '+signalCommands[id].code).join('\n')}\n}\n`;
 }
+export function previewSignalSketch(value){
+  const state=normalizeSignalExercise(value);
+  return `int ledPin = 13;\n\nvoid setup() {\n${state.setup?'  pinMode(ledPin, '+state.setup+');':'  // Выбери режим контакта во вкладке «Собрать команды».'}\n}\n\nvoid loop() {\n${state.lines.map((id,i)=>id?'  '+signalCommands[id].code:'  // Строка '+(i+1)+': выбери команду.').join('\n')}\n}\n`;
+}
+export function isSignalSketchSource(source,value){
+  const compact=code=>String(code??'').replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g,'').replace(/\s+/g,'');
+  return [previewSignalSketch(value),buildSignalSketch(value)].filter(Boolean).some(code=>compact(code)===compact(source));
+}
 export function signalPreview(value){
   const state=normalizeSignalExercise(value);let level=false,time=0;const segments=[];
   for(const id of state.lines){

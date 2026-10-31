@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {normalizeCaseOne,diagnosisComplete,normalizeSignalExercise,buildSignalSketch,signalPreview} from './case-one.js';
+import {normalizeCaseOne,diagnosisComplete,normalizeSignalExercise,buildSignalSketch,signalPreview,previewSignalSketch,isSignalSketchSource} from './case-one.js';
 import {restoreGame,restoreWorkshop,caseSnapshot,clearWorkshop} from './progress.js';
 
 assert.equal(diagnosisComplete(normalizeCaseOne({checks:['power','program'],verdict:'circuit'})),false);
@@ -24,3 +24,15 @@ assert.equal(restored.mode,'transfer');assert.equal(restored.drafts['0-transfer'
 assert.deepEqual(restored.drafts[0].signalExercise,exercise);
 const cleaned=clearWorkshop({...restored,completed:[...restored.completed]},[0,1,2]);assert.deepEqual(Object.keys(cleaned.drafts),['3']);assert.deepEqual(cleaned.completed,[]);
 console.log('PASS diagnosis evidence, legacy saves, code construction/preview, transfer draft isolation, case snapshots and replay cleanup.');
+
+const emptyPreview=previewSignalSketch({});
+assert(!emptyPreview.includes('digitalWrite('),'unfinished commands must not expose a pre-solved program');
+assert.equal(previewSignalSketch(exercise),buildSignalSketch(exercise),'the command form and C++ preview represent the same program');
+assert(isSignalSketchSource(buildSignalSketch(exercise),exercise));
+assert(isSignalSketchSource('/* student comment */\n'+buildSignalSketch(exercise),exercise));
+assert(!isSignalSketchSource('int ledPin=8; void setup(){} void loop(){}',exercise),'custom legacy C++ drafts must remain editable and intact');
+const unfinished={setup:'OUTPUT',lines:['high','','',''],applied:false};
+const resumed=restoreWorkshop({drafts:{0:{code:previewSignalSketch(unfinished),signalExercise:unfinished,signalExerciseRequired:true}}},new Set(),9);
+assert.equal(resumed.drafts[0].code,previewSignalSketch(unfinished));
+assert.deepEqual(resumed.drafts[0].signalExercise.lines,['high','','','']);
+console.log('PASS one shared program, unfinished preview, legacy code recognition and resumed command drafts.');
