@@ -124,7 +124,7 @@ export function openEspWorkshop(index,options={}){
   root.querySelectorAll('[data-color]').forEach(button=>button.onclick=()=>{wireColor=button.dataset.color;root.querySelectorAll('[data-color]').forEach(b=>{b.classList.toggle('is-selected',b===button);b.setAttribute('aria-pressed',String(b===button));});});
   root.querySelectorAll('[data-input]').forEach(input=>input.oninput=()=>{if(status==='checking')return;const key=input.dataset.input;inputs[key]=Number(input.value);$(`${key}-value`).textContent=`${inputs[key]} ${{battery:'В',tilt:'°',distance:'см'}[key]}`;worker?.postMessage({action:'input',inputs});queueSave();});
   for(const target of [$('press'),$('button-press')])if(target)bindPress(target);
-  $('download').onclick=()=>{const url=URL.createObjectURL(new Blob(['// Учебный стенд NEXORA ESP32. NexoraModules.h — модельные драйверы.\n'+code()],{type:'text/plain;charset=utf-8'}));const a=Object.assign(document.createElement('a'),{href:url,download:`nexora-case-${mission.id}.ino`});a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  $('download').onclick=()=>{const url=URL.createObjectURL(new Blob(['// Учебный стенд Нексора ESP32. NexoraModules.h — модельные драйверы.\n'+code()],{type:'text/plain;charset=utf-8'}));const a=Object.assign(document.createElement('a'),{href:url,download:`nexora-case-${mission.id}.ino`});a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
   root.scrollIntoView({block:'start'});requestAnimationFrame(renderWires);queueSave();
   window.dispatchEvent(new CustomEvent('nexora:mission-change',{detail:{mission:index,name:mission.title}}));
 }

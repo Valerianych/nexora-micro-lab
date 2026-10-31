@@ -455,7 +455,7 @@ function beginCase(id, {replay=false}={}) {
 }
 
 function casePaperMarkup(item, kind, stamp) {
-  return `<article class="case-paper ${kind}"><div class="case-paper-top"><span>CASE / ${item.id}</span><b>${stamp}</b></div><div class="case-paper-photo${item.sheet?' comic-sheet panel-0':''}"><img src="${item.image}" alt="" width="1280" height="720" loading="eager" decoding="sync"></div><h3>${item.title}</h3><p>«${item.problem}»</p><div class="case-paper-sign">— Архив NEXORA</div></article>`;
+  return `<article class="case-paper ${kind}"><div class="case-paper-top"><span>CASE / ${item.id}</span><b>${stamp}</b></div><div class="case-paper-photo${item.sheet?' comic-sheet panel-0':''}"><img src="${item.image}" alt="" width="1280" height="720" loading="eager" decoding="sync"></div><h3>${item.title}</h3><p>«${item.problem}»</p><div class="case-paper-sign">— Архив Нексора</div></article>`;
 }
 
 function showCaseReveal(currentId, nextId) {
@@ -628,7 +628,7 @@ function renderStoryBeat({ room, location, status, frame, kicker, title, text, a
   comicIntro.hidden = false;
   comicIntro.className = 'comic-intro story-card';
   storyAction = action;
-  comicIntro.innerHTML = `<div class="comic-intro-head"><div><span class="comic-intro-kicker">${kicker}</span><h2>Следующий шаг дела</h2></div><span class="comic-intro-count">${caption || image.caption || 'NEXORA'}</span></div><div class="comic-intro-grid"><article class="comic-intro-panel story-beat-panel is-new" data-index="0"><div class="comic-intro-image${sheetAttrs(image)}"><img src="${image.src}" alt="${image.alt}" width="1280" height="720" loading="eager" decoding="sync" style="object-position:${image.position || 'center'}"><span class="comic-intro-number">●</span></div><div class="comic-intro-caption"><span class="comic-intro-panel-kicker">${kicker}</span><h3>${title}</h3><p>${text}</p>${voice ? `<blockquote class="comic-voice">${voice}</blockquote>` : ''}${extra}<button class="accent comic-intro-action" data-story-action="advance">${actionLabel}</button></div></article></div>`;
+  comicIntro.innerHTML = `<div class="comic-intro-head"><div><span class="comic-intro-kicker">${kicker}</span><h2>Следующий шаг дела</h2></div><span class="comic-intro-count">${caption || image.caption || 'Нексора'}</span></div><div class="comic-intro-grid"><article class="comic-intro-panel story-beat-panel is-new" data-index="0"><div class="comic-intro-image${sheetAttrs(image)}"><img src="${image.src}" alt="${image.alt}" width="1280" height="720" loading="eager" decoding="sync" style="object-position:${image.position || 'center'}"><span class="comic-intro-number">●</span></div><div class="comic-intro-caption"><span class="comic-intro-panel-kicker">${kicker}</span><h3>${title}</h3><p>${text}</p>${voice ? `<blockquote class="comic-voice">${voice}</blockquote>` : ''}${extra}<button class="accent comic-intro-action" data-story-action="advance">${actionLabel}</button></div></article></div>`;
   onReady?.();
   });
 }
